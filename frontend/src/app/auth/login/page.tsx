@@ -125,10 +125,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="text-center text-sm text-gray-500 mt-6">
-          אין לך חשבון?{' '}
-          <Link href="/auth/register" className="text-brand-600 font-medium hover:underline">הירשם בחינם</Link>
-        </p>
       </div>
     </div>
   );
