@@ -62,7 +62,7 @@ export const useAuthStore = create<AuthState>()(
           const { data } = await api.get('/api/users/me');
           set({ user: data });
         } catch {
-          get().logout();
+          // silently ignore — no auth required
         }
       },
     }),

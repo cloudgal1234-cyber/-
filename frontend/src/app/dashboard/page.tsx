@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useAuthStore } from '@/store';
 import api from '@/lib/api';
 import { formatDate, MEDIA_TYPE_LABELS, STATUS_COLORS, STATUS_LABELS } from '@/lib/utils';
 
@@ -9,12 +8,10 @@ interface Stats { campaigns: number; generations: number; }
 interface RecentGen { id: string; mediaType: string; status: string; createdAt: string; campaign: { title: string }; thumbnailUrl?: string; }
 
 export default function DashboardPage() {
-  const { user, refreshUser } = useAuthStore();
   const [stats, setStats] = useState<Stats | null>(null);
   const [recent, setRecent] = useState<RecentGen[]>([]);
 
   useEffect(() => {
-    refreshUser();
     Promise.all([
       api.get('/api/campaigns').then((r) => r.data),
       api.get('/api/generations?limit=6').then((r) => r.data),
