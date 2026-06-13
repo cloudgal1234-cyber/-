@@ -266,7 +266,7 @@
   const IS_FILE_URL = window.location.protocol === 'file:';
 
   async function apiLoad() {
-    const r = await fetch(GH_URL, {
+    const r = await fetch(GH_URL + '?ref=main', {
       headers: { 'Authorization': `token ${GH_PAT}`, 'Accept': 'application/vnd.github.v3+json' }
     });
     if (r.status === 404) return null;
