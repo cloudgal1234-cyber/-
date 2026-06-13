@@ -642,10 +642,11 @@
       </div>` : `
       <div class="settings-card">
         <h3 class="mb-3">⚠️ לא מחובר ל-GitHub</h3>
-        <p class="text-sec" style="line-height:1.7">
-          הנתונים נשמרים רק במכשיר הזה.<br>
-          ודא שיש חיבור לאינטרנט ורענן את הדף.
+        <p class="text-sec" style="line-height:1.7;margin-bottom:12px">
+          הנתונים נשמרים רק במכשיר הזה.
         </p>
+        ${_ghLastError ? `<div style="background:#FEF0F0;border-radius:8px;padding:10px 12px;font-size:12px;color:#c0392b;word-break:break-all;margin-bottom:12px">שגיאה: ${esc(_ghLastError)}</div>` : ''}
+        <button class="btn btn-outline btn-full btn-sm" onclick="doTestGH()">🔍 בדוק חיבור</button>
       </div>`}
 
       <div class="settings-card">
@@ -849,6 +850,15 @@
     } catch { wrap.innerHTML='<p style="color:#e74c3c;font-size:13px">⚠️ שגיאה בטעינת הווידיאו</p>'; }
   }
 
+  async function doTestGH() {
+    showToast('⏳ בודק חיבור...',8000);
+    try {
+      const r=await fetch(GH_URL,{headers:{'Authorization':`token ${GH_PAT}`,'Accept':'application/vnd.github.v3+json'}});
+      showToast(`תשובה מ-GitHub: HTTP ${r.status}`);
+      if(r.ok){ serverMode=true; _ghLastError=''; render(); showToast('✅ מחובר! מרענן...'); }
+    } catch(e){ showToast('❌ שגיאת רשת: '+e.message); }
+  }
+
   async function doRefreshData() {
     showOverlay('מרענן נתונים מהשרת...');
     try { const data=await apiLoad(); if(data) db=data; hideOverlay(); render(); showToast('✅ הנתונים עודכנו!'); }
@@ -942,31 +952,31 @@
   // =====================================================================
   // INIT
   // =====================================================================
+  let _ghLastError = '';
+
   async function init() {
     if (!IS_FILE_URL) {
-      // Try GitHub API
       showOverlay('מתחבר ל-GitHub...');
       try {
         const data = await apiLoad();
         if (data) {
           db = data;
           serverMode = true;
+          if (db.questions.length === 0) { seedMockData(); await apiSave(db); }
         } else {
-          // First time — seed data and create the file
           serverMode = true;
           if (db.questions.length === 0) seedMockData();
           await apiSave(db);
         }
         hideOverlay();
-      } catch {
+      } catch(e) {
+        _ghLastError = e.message || String(e);
         hideOverlay();
-        // GitHub API not available — use localStorage
         serverMode = false;
         loadFromLocalStorage();
         if (db.questions.length === 0) seedMockData();
       }
     } else {
-      // file:// — always localStorage
       serverMode = false;
       loadFromLocalStorage();
       if (db.questions.length === 0) seedMockData();
