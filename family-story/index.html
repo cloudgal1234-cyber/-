@@ -556,7 +556,7 @@
           <div class="admin-topbar">
             <button class="btn btn-ghost btn-sm" onclick="navigate('home')">← חזרה</button>
             <span style="font-size:19px;font-weight:700">⚙️ לוח הבקרה</span>
-            <button class="btn btn-ghost btn-sm" onclick="navigate('book')">📚</button>
+            <button class="btn btn-ghost btn-sm" onclick="doRefreshData()" title="רענן נתונים">🔄</button>
           </div>
           <div class="tabs">
             <button class="tab ${adminTab==='questions'?'active':''}" onclick="setAdminTab('questions')">📋 שאלות</button>
@@ -985,6 +985,12 @@
     }
 
     window.addEventListener('hashchange', render);
+    // Auto-refresh from GitHub when the tab regains focus (in server mode)
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState === 'visible' && serverMode) {
+        try { const d = await apiLoad(); if (d) { db = d; render(); } } catch {}
+      }
+    });
     render();
   }
 
