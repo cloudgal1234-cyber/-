@@ -76,7 +76,17 @@
       "createdAt": "2026-06-13T15:42:00.232Z"
     }
   ],
-  "answers": [],
+  "answers": [
+    {
+      "id": "a16",
+      "questionId": "q1",
+      "parentId": "dad",
+      "text": "לי היתה ילדות טובה",
+      "imageData": null,
+      "videoPath": null,
+      "timestamp": "2026-06-13T16:03:50.850Z"
+    }
+  ],
   "sent": {
     "q1": {
       "mom": false,
@@ -139,5 +149,5 @@
       "dad": false
     }
   },
-  "nextId": 16
+  "nextId": 17
 }
