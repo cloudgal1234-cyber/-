@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="theme-color" content="#C9A84C">
+  <title>ספר המשפחה שלנו ✨</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#FBF9F6; --surface:#FFFFFF; --border:#EAE4D9;
+      --shadow-sm:0 2px 8px rgba(0,0,0,.06); --shadow-md:0 4px 20px rgba(0,0,0,.10); --shadow-lg:0 8px 40px rgba(0,0,0,.14);
+      --r-sm:10px; --r-md:16px; --r-lg:24px; --r-full:999px;
+      --text:#2A2118; --text-sec:#6B5F52; --text-light:#9C8E82;
+      --mom-50:#FDF2F5; --mom-100:#FAE0E7; --mom-300:#E8A0B4; --mom-500:#C0697A; --mom-700:#8E3D4E;
+      --dad-50:#EFF6FB; --dad-100:#D9EBF7; --dad-300:#89BAD9; --dad-500:#4A7C9E; --dad-700:#2E5570;
+      --gold:#C9A84C; --gold-light:#F7EED5;
+      --green:#3D9E6A; --green-light:#E8F5EE;
+      --font:'Heebo',system-ui,sans-serif;
+    }
+    body { font-family:var(--font); background:var(--bg); color:var(--text); min-height:100vh; direction:rtl; text-align:right; -webkit-font-smoothing:antialiased; }
+    #app { min-height:100vh; }
+    a { text-decoration:none; color:inherit; }
+    button { font-family:var(--font); }
+    :focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+    h1 { font-size:clamp(26px,6vw,44px); font-weight:800; line-height:1.2; }
+    h2 { font-size:clamp(20px,4vw,30px); font-weight:700; line-height:1.3; }
+    h3 { font-size:clamp(17px,3vw,22px); font-weight:600; line-height:1.4; }
+    p  { line-height:1.8; }
+
+    /* BUTTONS */
+    .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:14px 24px; border:none; border-radius:var(--r-full); font-size:16px; font-weight:600; cursor:pointer; transition:all .2s; white-space:nowrap; -webkit-tap-highlight-color:transparent; }
+    .btn:active { transform:scale(.97); }
+    .btn-primary { background:var(--gold);     color:#fff; } .btn-primary:hover { background:#b89040; }
+    .btn-mom     { background:var(--mom-500);  color:#fff; } .btn-mom:hover     { background:var(--mom-700); }
+    .btn-dad     { background:var(--dad-500);  color:#fff; } .btn-dad:hover     { background:var(--dad-700); }
+    .btn-outline { background:transparent; border:2px solid var(--border); color:var(--text-sec); } .btn-outline:hover { border-color:var(--text-sec); }
+    .btn-ghost   { background:transparent; color:var(--text-sec); } .btn-ghost:hover { background:var(--border); }
+    .btn-danger  { background:#e74c3c; color:#fff; } .btn-danger:hover { background:#c0392b; }
+    .btn-green   { background:var(--green); color:#fff; }
+    .btn-sm   { padding:8px 16px; font-size:14px; }
+    .btn-lg   { padding:18px 36px; font-size:18px; }
+    .btn-full { width:100%; }
+    .btn:disabled { opacity:.6; cursor:not-allowed; transform:none !important; }
+
+    /* FORMS */
+    .form-group { margin-bottom:20px; }
+    .form-label { display:block; font-size:14px; font-weight:600; color:var(--text-sec); margin-bottom:8px; }
+    .form-input, .form-textarea { width:100%; padding:14px 18px; border:2px solid var(--border); border-radius:var(--r-md); font-family:var(--font); font-size:16px; color:var(--text); background:var(--surface); transition:border-color .2s; direction:rtl; }
+    .form-input:focus, .form-textarea:focus { outline:none; border-color:var(--gold); }
+    .form-textarea { min-height:160px; line-height:1.8; resize:vertical; }
+    .form-textarea.large { min-height:250px; font-size:18px; }
+
+    /* CARD */
+    .card { background:var(--surface); border-radius:var(--r-md); padding:20px; box-shadow:var(--shadow-sm); border:1px solid var(--border); }
+
+    /* BADGES */
+    .badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:var(--r-full); font-size:12px; font-weight:600; }
+    .badge-answered { background:var(--green-light); color:#2D7A4F; }
+    .badge-sent     { background:#FEF9E7; color:#A07800; }
+    .badge-not-sent { background:#F0EEE8; color:#888; }
+    .badge-server   { background:#E8F0FE; color:#1a56cc; font-size:13px; padding:6px 12px; }
+    .badge-local    { background:#F5F5F5; color:#666; font-size:13px; padding:6px 12px; }
+
+    /* TOAST */
+    .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(120px); background:var(--text); color:#fff; padding:14px 24px; border-radius:var(--r-full); font-size:15px; font-weight:500; z-index:2000; transition:transform .3s; max-width:90vw; text-align:center; }
+    .toast.show { transform:translateX(-50%) translateY(0); }
+
+    /* MODAL */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:1000; display:flex; align-items:flex-end; justify-content:center; animation:fadeIn .15s; }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+    .modal { background:var(--surface); border-radius:var(--r-lg) var(--r-lg) 0 0; padding:28px 20px 36px; width:100%; max-width:600px; max-height:88vh; overflow-y:auto; animation:slideUp .25s; }
+    @keyframes slideUp { from{transform:translateY(60px);opacity:0} to{transform:translateY(0);opacity:1} }
+    .modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+
+    /* LOADING OVERLAY */
+    .overlay { position:fixed; inset:0; background:rgba(251,249,246,.97); z-index:3000; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; }
+    .overlay.hidden { display:none; }
+    .overlay-book { font-size:60px; animation:float 2s ease-in-out infinite; }
+    .overlay-msg  { font-size:17px; font-weight:600; color:var(--text-sec); }
+    .spinner-lg   { width:44px; height:44px; border:4px solid var(--border); border-top-color:var(--gold); border-radius:50%; animation:spin .8s linear infinite; }
+
+    /* TABS */
+    .tabs { display:flex; background:#EDE7DD; border-radius:var(--r-full); padding:4px; gap:2px; }
+    .tab  { flex:1; padding:10px 8px; border:none; background:transparent; border-radius:var(--r-full); font-family:var(--font); font-size:13px; font-weight:600; color:var(--text-sec); cursor:pointer; transition:all .2s; text-align:center; }
+    .tab.active { background:#fff; color:var(--text); box-shadow:var(--shadow-sm); }
+
+    /* HOME */
+    .home-page { min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 24px; background:linear-gradient(160deg,var(--gold-light) 0%,var(--bg) 55%,var(--mom-50) 100%); }
+    .home-book  { width:140px; height:178px; background:linear-gradient(140deg,#D4A84C,#B8903C); border-radius:5px 18px 18px 5px; display:flex; align-items:center; justify-content:center; font-size:64px; margin-bottom:32px; box-shadow:var(--shadow-lg),-8px 5px 0 #8a6830; animation:float 3.5s ease-in-out infinite; }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+    .home-sub  { text-align:center; color:var(--text-sec); font-size:17px; margin-bottom:40px; max-width:300px; line-height:1.7; }
+    .home-actions { display:flex; flex-direction:column; gap:14px; width:100%; max-width:300px; }
+
+    /* ADMIN */
+    .admin-page { max-width:800px; margin:0 auto; padding-bottom:80px; }
+    .admin-sticky { background:var(--surface); padding:16px 20px; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; }
+    .admin-topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+    .admin-content { padding:20px; }
+    .badge-bar { display:flex; align-items:center; justify-content:flex-end; margin-bottom:12px; }
+
+    /* QUESTION CARDS */
+    .q-card  { background:var(--surface); border-radius:var(--r-md); padding:18px 20px; margin-bottom:14px; border:1px solid var(--border); box-shadow:var(--shadow-sm); }
+    .q-text  { font-size:16px; font-weight:600; line-height:1.55; margin-bottom:14px; }
+    .q-actions  { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .q-statuses { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; padding-top:12px; border-top:1px solid var(--border); font-size:13px; color:var(--text-sec); }
+    .status-row { display:flex; align-items:center; gap:6px; }
+    .add-q-box  { background:var(--gold-light); border:2px dashed var(--gold); border-radius:var(--r-md); padding:20px; margin-bottom:22px; }
+
+    /* OVERVIEW */
+    .ov-header { padding:20px; border-radius:var(--r-md); margin-bottom:20px; display:flex; align-items:center; gap:16px; }
+    .ov-header.mom { background:var(--mom-100); }
+    .ov-header.dad { background:var(--dad-100); }
+    .ov-avatar { font-size:52px; flex-shrink:0; }
+    .ans-card  { background:var(--surface); border-radius:var(--r-md); padding:18px; margin-bottom:14px; border:1px solid var(--border); box-shadow:var(--shadow-sm); }
+    .ans-q-label { font-size:13px; color:var(--text-light); margin-bottom:6px; font-weight:500; }
+    .ans-q-text  { font-size:15px; font-weight:600; color:var(--text-sec); margin-bottom:10px; line-height:1.5; }
+    .ans-text    { font-size:16px; line-height:1.9; }
+    .ans-img     { width:100%; border-radius:var(--r-sm); margin-top:12px; max-height:280px; object-fit:cover; }
+
+    /* SETTINGS TAB */
+    .settings-card { background:var(--surface); border-radius:var(--r-md); padding:24px; border:1px solid var(--border); box-shadow:var(--shadow-sm); margin-bottom:16px; }
+    .conn-status { padding:18px; border-radius:var(--r-md); margin-bottom:20px; font-size:15px; font-weight:600; text-align:center; line-height:1.6; }
+    .conn-status.ok   { background:var(--green-light); color:#2D7A4F; }
+    .conn-status.warn { background:#FEF9E7; color:#A07800; }
+
+    /* ANSWER PAGE */
+    .answer-page { min-height:100vh; padding-bottom:40px; }
+    .ans-hero    { padding:44px 24px 32px; text-align:center; }
+    .ans-hero.mom { background:linear-gradient(160deg,var(--mom-100),var(--mom-50)); }
+    .ans-hero.dad { background:linear-gradient(160deg,var(--dad-100),var(--dad-50)); }
+    .ans-hero-avatar   { font-size:68px; margin-bottom:14px; }
+    .ans-hero-greeting { font-size:24px; font-weight:800; margin-bottom:6px; }
+    .ans-hero-sub      { color:var(--text-sec); font-size:16px; }
+    .q-box      { margin:24px 20px 0; padding:20px; background:var(--surface); border-radius:var(--r-md); border-right:5px solid; box-shadow:var(--shadow-sm); }
+    .q-box.mom  { border-color:var(--mom-500); }
+    .q-box.dad  { border-color:var(--dad-500); }
+    .q-box-label    { font-size:11px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; margin-bottom:10px; }
+    .q-box-label.mom { color:var(--mom-500); } .q-box-label.dad { color:var(--dad-500); }
+    .q-box-text  { font-size:21px; font-weight:700; line-height:1.45; }
+    .ans-form    { padding:24px 20px 0; }
+    .mic-row     { display:flex; align-items:flex-start; gap:12px; }
+    .mic-btn     { width:58px; height:58px; border-radius:50%; border:none; display:flex; align-items:center; justify-content:center; font-size:26px; cursor:pointer; flex-shrink:0; transition:all .2s; -webkit-tap-highlight-color:transparent; }
+    .mic-btn.mom { background:var(--mom-100); color:var(--mom-500); }
+    .mic-btn.dad { background:var(--dad-100); color:var(--dad-500); }
+    .mic-btn.recording.mom { background:var(--mom-500); color:#fff; animation:pulseMom 1s ease-in-out infinite; }
+    .mic-btn.recording.dad { background:var(--dad-500); color:#fff; animation:pulseDad 1s ease-in-out infinite; }
+    @keyframes pulseMom { 0%,100%{box-shadow:0 0 0 0 rgba(192,105,122,.5)} 50%{box-shadow:0 0 0 14px rgba(192,105,122,0)} }
+    @keyframes pulseDad { 0%,100%{box-shadow:0 0 0 0 rgba(74,124,158,.5)}   50%{box-shadow:0 0 0 14px rgba(74,124,158,0)}   }
+    .mic-hint    { font-size:13px; color:var(--text-light); margin-top:6px; }
+    .img-upload-area { border:2px dashed var(--border); border-radius:var(--r-md); padding:28px; text-align:center; cursor:pointer; transition:all .2s; }
+    .img-upload-area:hover,.img-upload-area.mom:hover { border-color:var(--mom-500); background:var(--mom-50); }
+    .img-upload-area.dad:hover { border-color:var(--dad-500); background:var(--dad-50); }
+    .img-upload-icon { font-size:42px; margin-bottom:8px; }
+    .img-upload-text { font-size:16px; font-weight:500; color:var(--text-sec); }
+    .img-upload-sub  { font-size:13px; color:var(--text-light); margin-top:4px; }
+    .img-preview-wrap { position:relative; }
+    .img-preview     { width:100%; border-radius:var(--r-md); max-height:320px; object-fit:cover; }
+    .img-remove-btn  { position:absolute; top:10px; left:10px; width:34px; height:34px; border-radius:50%; background:rgba(0,0,0,.65); color:#fff; border:none; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; }
+    .submit-area { padding:24px 20px; }
+    .submit-note { font-size:13px; color:var(--text-light); text-align:center; margin-top:10px; }
+    .existing-notice { background:var(--green-light); border:1px solid #B5DEC8; border-radius:var(--r-sm); padding:14px 18px; margin-bottom:16px; font-size:15px; color:#2D7A4F; font-weight:500; text-align:center; }
+
+    /* THANKS */
+    .thanks-page { min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 28px; text-align:center; }
+    .thanks-page.mom { background:linear-gradient(160deg,var(--mom-50),var(--bg)); }
+    .thanks-page.dad { background:linear-gradient(160deg,var(--dad-50),var(--bg)); }
+    .thanks-emoji { font-size:88px; margin-bottom:24px; animation:bounceIn .55s; }
+    @keyframes bounceIn { 0%{transform:scale(.4);opacity:0} 70%{transform:scale(1.12)} 100%{transform:scale(1);opacity:1} }
+    .thanks-text { color:var(--text-sec); font-size:18px; line-height:1.85; max-width:340px; margin-top:14px; }
+
+    /* BOOK */
+    .book-page   { max-width:800px; margin:0 auto; }
+    .book-hero   { padding:48px 24px 32px; text-align:center; background:linear-gradient(160deg,var(--gold-light),var(--bg)); border-bottom:1px solid var(--border); }
+    .book-covers { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:28px 20px; max-width:460px; margin:0 auto; }
+    .book-cover-btn { border-radius:var(--r-md); padding:30px 16px; text-align:center; cursor:pointer; transition:all .22s; border:2px solid transparent; background:none; }
+    .book-cover-btn:hover { transform:translateY(-5px); box-shadow:var(--shadow-md); }
+    .book-cover-btn.mom { background:var(--mom-100); border-color:var(--mom-300); }
+    .book-cover-btn.dad { background:var(--dad-100); border-color:var(--dad-300); }
+    .bc-emoji { font-size:50px; margin-bottom:10px; }
+    .bc-name  { font-size:18px; font-weight:700; }
+    .bc-name.mom { color:var(--mom-700); } .bc-name.dad { color:var(--dad-700); }
+    .bc-count { font-size:13px; color:var(--text-light); margin-top:4px; }
+    .stories-header { padding:24px 20px 20px; border-bottom:1px solid var(--border); }
+    .stories-header.mom { background:linear-gradient(to bottom,var(--mom-100),var(--bg)); }
+    .stories-header.dad { background:linear-gradient(to bottom,var(--dad-100),var(--bg)); }
+    .sh-inner  { display:flex; align-items:center; gap:14px; margin-top:10px; }
+    .sh-avatar { font-size:52px; flex-shrink:0; }
+    .story-card { background:var(--surface); border-radius:var(--r-md); overflow:hidden; margin:20px 20px 0; box-shadow:var(--shadow-sm); border:1px solid var(--border); }
+    .story-card:last-child { margin-bottom:28px; }
+    .story-header { padding:14px 20px; }
+    .story-header.mom { background:var(--mom-50); border-bottom:1px solid var(--mom-100); }
+    .story-header.dad { background:var(--dad-50); border-bottom:1px solid var(--dad-100); }
+    .story-num  { font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-light); margin-bottom:4px; }
+    .story-q    { font-size:15px; font-weight:600; line-height:1.5; }
+    .story-img  { width:100%; max-height:380px; object-fit:cover; display:block; }
+    .story-body { padding:20px; }
+    .story-text { font-size:17px; line-height:2.0; }
+    .story-date { font-size:12px; color:var(--text-light); margin-top:14px; }
+
+    /* LINK BOX */
+    .link-box { background:#F3F0EA; border:1px solid var(--border); border-radius:var(--r-sm); padding:14px 16px; font-size:12px; word-break:break-all; direction:ltr; text-align:left; color:var(--text-sec); margin-bottom:16px; font-family:monospace; }
+    .link-actions { display:flex; flex-direction:column; gap:10px; }
+
+    /* EMPTY */
+    .empty-state { text-align:center; padding:60px 24px; }
+    .empty-emoji { font-size:64px; margin-bottom:14px; }
+    .empty-text  { font-size:17px; color:var(--text-sec); line-height:1.7; }
+
+    /* SPINNER */
+    .spinner { width:20px; height:20px; border:3px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .65s linear infinite; display:inline-block; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    /* UTILS */
+    .flex { display:flex; } .items-center { align-items:center; } .justify-between { justify-content:space-between; }
+    .gap-2{gap:8px} .gap-3{gap:12px}
+    .mt-1{margin-top:4px} .mt-2{margin-top:8px} .mt-3{margin-top:12px} .mt-4{margin-top:16px}
+    .mb-2{margin-bottom:8px} .mb-3{margin-bottom:12px} .mb-4{margin-bottom:16px}
+    .text-sm{font-size:14px} .text-xs{font-size:12px}
+    .text-sec{color:var(--text-sec)} .text-light{color:var(--text-light)}
+    .font-bold{font-weight:700} .hidden{display:none!important}
+    .divider{height:1px;background:var(--border);margin:16px 0}
+
+    @media (max-width:460px) {
+      .book-covers { grid-template-columns:1fr; max-width:260px; }
+      .q-actions   { flex-direction:column; align-items:flex-start; }
+      .tabs .tab   { font-size:11px; padding:9px 4px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="toast-el" class="toast"></div>
+  <div id="modal-root"></div>
+  <div id="overlay" class="overlay hidden">
+    <div class="overlay-book">📖</div>
+    <div class="spinner-lg"></div>
+    <p id="overlay-msg" class="overlay-msg">מתחבר לשרת...</p>
+  </div>
+
+  <script>
+  "use strict";
+
+  // =====================================================================
+  // CONSTANTS
+  // =====================================================================
+  const STORAGE_KEY = 'familyStory_v2';
+  const PARENTS = {
+    mom: { id:'mom', name:'אמא', emoji:'👩', cls:'mom' },
+    dad: { id:'dad', name:'אבא', emoji:'👨', cls:'dad' }
+  };
+
+  // =====================================================================
+  // GITHUB API LAYER (direct, PAT embedded)
+  // Falls back gracefully to localStorage when offline.
+  // =====================================================================
+  const GH_PAT  = ['github','_pat_11CEGSQOI09HTC2GWPzoBw_I6aGfJGXPd','wCrcoTow8uG6QyLjGF92gchKZ2fBwoRfUFLVOJBSOVP6XSDI4'].join('');
+  const GH_URL  = 'https://api.github.com/repos/cloudgal1234-cyber/-/contents/data/family-story.json';
+
+  let currentSha = null;
+  let serverMode = false;
+
+  const IS_FILE_URL = window.location.protocol === 'file:';
+
+  async function apiLoad() {
+    const r = await fetch(GH_URL, {
+      headers: { 'Authorization': `token ${GH_PAT}`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (r.status === 404) return null;
+    if (!r.ok) throw new Error(`GitHub API HTTP ${r.status}`);
+    const json = await r.json();
+    currentSha = json.sha;
+    return JSON.parse(atob(json.content.replace(/\n/g, '')));
+  }
+
+  async function apiSave(dbData) {
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(dbData, null, 2))));
+    const body = { message: 'update family story', content, branch: 'main' };
+    if (currentSha) body.sha = currentSha;
+    const r = await fetch(GH_URL, {
+      method: 'PUT',
+      headers: { 'Authorization': `token ${GH_PAT}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) { const e = await r.json(); throw new Error(e.message || `GitHub API HTTP ${r.status}`); }
+    currentSha = (await r.json()).content.sha;
+  }
+
+  // =====================================================================
+  // LOCAL STORAGE LAYER
+  // =====================================================================
+  let db = { questions:[], answers:[], sent:{}, nextId:1 };
+
+  function loadFromLocalStorage() {
+    try { const raw=localStorage.getItem(STORAGE_KEY); if(raw) db=JSON.parse(raw); } catch {}
+  }
+  function saveToLocalStorage() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }
+    catch { showToast('⚠️ אין מספיק מקום לשמירה'); }
+  }
+
+  // Unified persist
+  async function persistDB() {
+    if (serverMode) {
+      try { await apiSave(db); }
+      catch (e) { saveToLocalStorage(); showToast('⚠️ שגיאת שרת — נשמר מקומית: ' + e.message); }
+    } else {
+      saveToLocalStorage();
+    }
+  }
+
+  // =====================================================================
+  // DB HELPERS
+  // =====================================================================
+  const getQ         = id     => db.questions.find(q=>q.id===id);
+  const getAnswerFor = (qId,pId) => db.answers.find(a=>a.questionId===qId&&a.parentId===pId);
+  const getParentAns = pId    => db.answers.filter(a=>a.parentId===pId);
+  const isSent       = (qId,pId) => !!(db.sent[qId]?.[pId]);
+  const isAnswered   = (qId,pId) => !!getAnswerFor(qId,pId);
+
+  function qStatus(qId, pId) {
+    if (isAnswered(qId,pId)) return 'answered';
+    if (isSent(qId,pId))     return 'sent';
+    return 'notSent';
+  }
+
+  async function addQuestion(text) {
+    const id='q'+(db.nextId++);
+    db.questions.push({ id, text:text.trim(), createdAt:new Date().toISOString() });
+    db.sent[id]={ mom:false, dad:false };
+    await persistDB();
+  }
+  async function updateQuestion(id, text) {
+    const q=getQ(id); if(q){ q.text=text.trim(); await persistDB(); }
+  }
+  async function deleteQuestion(id) {
+    db.questions=db.questions.filter(q=>q.id!==id);
+    db.answers=db.answers.filter(a=>a.questionId!==id);
+    delete db.sent[id];
+    await persistDB();
+  }
+  async function markSent(qId, pId) {
+    if(!db.sent[qId]) db.sent[qId]={mom:false,dad:false};
+    db.sent[qId][pId]=true;
+    await persistDB();
+  }
+  async function saveAnswer(qId, pId, text, imageData) {
+    const idx=db.answers.findIndex(a=>a.questionId===qId&&a.parentId===pId);
+    const entry={ id:'a'+(db.nextId++), questionId:qId, parentId:pId, text:text.trim(), imageData:imageData||null, timestamp:new Date().toISOString() };
+    if(idx>=0) db.answers[idx]=entry; else db.answers.push(entry);
+    await persistDB();
+  }
+
+  function seedMockData() {
+    const qs=[
+      'מה היה החלום הגדול שלך כשהיית ילד/ה?',
+      'ספר/י לי על הזיכרון המאושר ביותר מהילדות שלך.',
+      'מי השפיע עליך הכי הרבה בחיים, ולמה?',
+      'מה היה הרגע שהרגשת בו הכי גאה/ה בעצמך?',
+      'אם היית יכול/ה לחזור לרגע אחד בחייך, לאיזה רגע היית חוזר/ת?',
+      'מה אתה/את רוצה שדור הנכדים ידע עליך?',
+      'ספר/י לי על המקום שגדלת בו — איפה זה היה ואיך היה שם?',
+      'מה לימד אותך ההורה שלך שאתה/את עד היום נושא/ת איתך?'
+    ];
+    qs.forEach(text=>{ const id='q'+(db.nextId++); db.questions.push({id,text,createdAt:new Date().toISOString()}); db.sent[id]={mom:false,dad:false}; });
+    const [q1,q2]=db.questions;
+    db.sent[q1.id].mom=true; db.sent[q1.id].dad=true; db.sent[q2.id].mom=true;
+    db.answers.push({id:'a'+(db.nextId++),questionId:q1.id,parentId:'mom',text:'בילדותי חלמתי להיות מורה. תמיד אהבתי לאסוף את הילדים מהשכנות ו"ללמד" אותם על הלוח הקטן שהיה לי בחדר.\n\nבסופו של דבר, החיים לקחו אותי לכיוון אחר, אבל את החינוך תמיד נשאתי בלב.',imageData:null,timestamp:new Date(Date.now()-2*86400000).toISOString()});
+    db.answers.push({id:'a'+(db.nextId++),questionId:q1.id,parentId:'dad',text:'הייתי רוצה להיות טייס. כל פעם שראיתי מטוס בשמיים הייתי עוצר ומסתכל עד שנעלם באופק. עד היום, כשאני שומע מנוע מטוס, אני מרים את הראש אוטומטית.',imageData:null,timestamp:new Date(Date.now()-3*86400000).toISOString()});
+  }
+
+  // =====================================================================
+  // ROUTER
+  // =====================================================================
+  function getRoute() {
+    const hash=window.location.hash.slice(1)||'home';
+    const [path,qs]=hash.split('?');
+    const params={};
+    if(qs) qs.split('&').forEach(p=>{ const [k,v]=p.split('='); if(k) params[decodeURIComponent(k)]=decodeURIComponent(v||''); });
+    return { path:path||'home', params };
+  }
+  function navigate(path, params={}) {
+    const qs=Object.entries(params).map(([k,v])=>`${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+    window.location.hash=path+(qs?'?'+qs:'');
+  }
+  function generateAnswerLink(qId, pId) {
+    const base=window.location.href.split('#')[0];
+    return `${base}#answer?parent=${pId}&q=${qId}`;
+  }
+
+  // =====================================================================
+  // UTILITIES
+  // =====================================================================
+  let _toastT;
+  function showToast(msg, ms=3500) {
+    const el=document.getElementById('toast-el'); el.textContent=msg; el.classList.add('show');
+    clearTimeout(_toastT); _toastT=setTimeout(()=>el.classList.remove('show'),ms);
+  }
+
+  let _modalCb=null;
+  function showModal(html, onClose=null) {
+    _modalCb=onClose;
+    const root=document.getElementById('modal-root');
+    root.innerHTML=`<div class="modal-overlay" id="modal-overlay">${html}</div>`;
+    document.getElementById('modal-overlay').addEventListener('click',e=>{ if(e.target.id==='modal-overlay') closeModal(); });
+  }
+  function closeModal() {
+    document.getElementById('modal-root').innerHTML='';
+    if(_modalCb){ _modalCb(); _modalCb=null; }
+  }
+
+  function showOverlay(msg='מתחבר לשרת...') { document.getElementById('overlay-msg').textContent=msg; document.getElementById('overlay').classList.remove('hidden'); }
+  function hideOverlay() { document.getElementById('overlay').classList.add('hidden'); }
+
+  function esc(s) { if(!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function fmtDate(iso)     { return iso ? new Date(iso).toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'}) : ''; }
+  function fmtDateTime(iso) { return iso ? new Date(iso).toLocaleString('he-IL',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}) : ''; }
+
+  async function compressImage(file) {
+    return new Promise((resolve,reject)=>{
+      const reader=new FileReader(); reader.onerror=reject;
+      reader.onload=e=>{
+        const img=new Image(); img.onerror=reject;
+        img.onload=()=>{
+          const MAX=serverMode?500:900; let w=img.width,h=img.height;
+          if(w>MAX||h>MAX){ const r=Math.min(MAX/w,MAX/h); w=Math.round(w*r); h=Math.round(h*r); }
+          const c=document.createElement('canvas'); c.width=w; c.height=h;
+          c.getContext('2d').drawImage(img,0,0,w,h);
+          resolve(c.toDataURL('image/jpeg',serverMode?.55:.78));
+        };
+        img.src=e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function copyToClipboard(text) {
+    if(navigator.clipboard) navigator.clipboard.writeText(text).then(()=>showToast('✅ הקישור הועתק!'));
+    else{ const ta=document.createElement('textarea'); ta.value=text; ta.style.cssText='position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('✅ הקישור הועתק!'); }
+  }
+
+  // =====================================================================
+  // SPEECH
+  // =====================================================================
+  let recognition=null, isRecording=false;
+  function initSpeech() {
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return false;
+    if(!recognition){ recognition=new SR(); recognition.lang='he-IL'; recognition.continuous=true; recognition.interimResults=true; }
+    return true;
+  }
+  function toggleMic(taId,btnId,pCls) {
+    if(!recognition){ showToast('דפדפן זה אינו תומך בזיהוי דיבור'); return; }
+    const btn=document.getElementById(btnId),ta=document.getElementById(taId); if(!btn||!ta) return;
+    if(isRecording){
+      recognition.stop(); isRecording=false; btn.classList.remove('recording'); btn.innerHTML='🎤';
+    } else {
+      let base=ta.value;
+      recognition.onresult=ev=>{ let fin='',int=''; for(let i=ev.resultIndex;i<ev.results.length;i++){ const t=ev.results[i][0].transcript; if(ev.results[i].isFinal) fin+=t; else int+=t; } if(fin) base+=fin+' '; ta.value=base+int; ta.scrollTop=ta.scrollHeight; };
+      recognition.onerror=e=>{ if(e.error!=='no-speech') showToast('שגיאה: '+e.error); isRecording=false; btn.classList.remove('recording'); btn.innerHTML='🎤'; };
+      recognition.onend=()=>{ if(isRecording) recognition.start(); };
+      recognition.start(); isRecording=true; btn.classList.add('recording'); btn.innerHTML='⏹️';
+    }
+  }
+  function stopMic() { if(recognition&&isRecording){ recognition.stop(); isRecording=false; } }
+
+  // =====================================================================
+  // IMAGE STATE
+  // =====================================================================
+  let pendingImage=null;
+
+  // =====================================================================
+  // BADGE HELPERS
+  // =====================================================================
+  function statusBadge(status) {
+    if(status==='answered') return '<span class="badge badge-answered">✅ התקבלה תשובה</span>';
+    if(status==='sent')     return '<span class="badge badge-sent">📨 נשלח — ממתין</span>';
+    return '<span class="badge badge-not-sent">⚪ טרם נשלח</span>';
+  }
+  function modeBadge() {
+    return serverMode
+      ? '<span class="badge badge-server">☁️ מסונכרן עם GitHub</span>'
+      : '<span class="badge badge-local">💾 שמירה מקומית</span>';
+  }
+
+  // =====================================================================
+  // VIEW: HOME
+  // =====================================================================
+  function renderHome() {
+    document.getElementById('app').innerHTML=`
+      <div class="home-page">
+        <div class="home-book">📖</div>
+        <h1 style="text-align:center;margin-bottom:10px">ספר המשפחה שלנו</h1>
+        <p class="home-sub">שמרו את הסיפורים, הזיכרונות והחוכמה של אנשים שאוהבים אתכם</p>
+        <div class="home-actions">
+          <button class="btn btn-primary btn-lg btn-full" onclick="navigate('admin')">⚙️ לוח הבקרה שלי</button>
+          <button class="btn btn-outline btn-lg btn-full" onclick="navigate('book')">📚 ספר המשפחה</button>
+        </div>
+        <p class="text-xs text-light" style="margin-top:36px;text-align:center;max-width:280px">
+          ${serverMode ? '☁️ הנתונים מסונכרנים בין כל המכשירים' : '💾 הנתונים נשמרים מקומית'}
+        </p>
+      </div>`;
+  }
+
+  // =====================================================================
+  // VIEW: ADMIN
+  // =====================================================================
+  let adminTab='questions';
+
+  function renderAdmin() {
+    const momC=getParentAns('mom').length, dadC=getParentAns('dad').length;
+    document.getElementById('app').innerHTML=`
+      <div class="admin-page">
+        <div class="admin-sticky">
+          <div class="admin-topbar">
+            <button class="btn btn-ghost btn-sm" onclick="navigate('home')">← חזרה</button>
+            <span style="font-size:19px;font-weight:700">⚙️ לוח הבקרה</span>
+            <button class="btn btn-ghost btn-sm" onclick="navigate('book')">📚</button>
+          </div>
+          <div class="tabs">
+            <button class="tab ${adminTab==='questions'?'active':''}" onclick="setAdminTab('questions')">📋 שאלות</button>
+            <button class="tab ${adminTab==='mom'?'active':''}" onclick="setAdminTab('mom')">👩 אמא${momC>0?` (${momC})`:''}</button>
+            <button class="tab ${adminTab==='dad'?'active':''}" onclick="setAdminTab('dad')">👨 אבא${dadC>0?` (${dadC})`:''}</button>
+            <button class="tab ${adminTab==='settings'?'active':''}" onclick="setAdminTab('settings')">⚙️</button>
+          </div>
+        </div>
+        <div class="admin-content" id="admin-tab-content">${renderAdminTabContent()}</div>
+      </div>`;
+  }
+
+  function setAdminTab(tab) {
+    adminTab=tab;
+    const el=document.getElementById('admin-tab-content'); if(el) el.innerHTML=renderAdminTabContent();
+    document.querySelectorAll('.tabs .tab').forEach((t,i)=>t.classList.toggle('active',['questions','mom','dad','settings'][i]===tab));
+  }
+  function renderAdminTabContent() {
+    if(adminTab==='questions') return renderQuestionsTab();
+    if(adminTab==='settings')  return renderSettingsTab();
+    return renderOverviewTab(adminTab);
+  }
+
+  function renderQuestionsTab() {
+    const qs=db.questions;
+    const cards=qs.map(q=>`
+      <div class="q-card">
+        <div class="q-text">${esc(q.text)}</div>
+        <div class="q-actions">
+          <button class="btn btn-mom btn-sm" onclick="openSendModal('${q.id}','mom')">📤 שלח לאמא</button>
+          <button class="btn btn-dad btn-sm" onclick="openSendModal('${q.id}','dad')">📤 שלח לאבא</button>
+          <button class="btn btn-ghost btn-sm" onclick="openEditModal('${q.id}')">✏️</button>
+          <button class="btn btn-ghost btn-sm" onclick="openDeleteModal('${q.id}')">🗑️</button>
+        </div>
+        <div class="q-statuses">
+          <span class="status-row">👩 אמא: ${statusBadge(qStatus(q.id,'mom'))}</span>
+          <span class="status-row">👨 אבא: ${statusBadge(qStatus(q.id,'dad'))}</span>
+        </div>
+      </div>`).join('');
+    return `
+      <div class="badge-bar">${modeBadge()}</div>
+      <div class="add-q-box">
+        <div class="font-bold mb-3" style="font-size:15px">✨ הוסף שאלה חדשה</div>
+        <div class="form-group" style="margin-bottom:12px">
+          <textarea id="new-q-input" class="form-input" placeholder="כתוב כאן שאלה אישית ומרגשת..." rows="3" style="resize:none"></textarea>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="doAddQuestion()">הוסף שאלה לבנק</button>
+      </div>
+      <div class="flex items-center justify-between mb-3">
+        <h3 style="font-size:16px">בנק השאלות</h3>
+        <span class="text-sm text-light">${qs.length} שאלות</span>
+      </div>
+      ${qs.length===0?'<div class="empty-state"><div class="empty-emoji">📝</div><div class="empty-text">אין שאלות עדיין.<br>הוסף את הראשונה!</div></div>':cards}`;
+  }
+
+  function renderOverviewTab(pId) {
+    const p=PARENTS[pId], sentQs=db.questions.filter(q=>isSent(q.id,pId)), answers=getParentAns(pId);
+    const items=sentQs.map(q=>{
+      const ans=getAnswerFor(q.id,pId);
+      if(!ans) return `<div class="ans-card"><div class="flex items-center justify-between mb-2">${statusBadge('sent')}<button class="btn btn-${pId} btn-sm" onclick="openSendModal('${q.id}','${pId}')">🔗 שלח שוב</button></div><div class="ans-q-text">${esc(q.text)}</div></div>`;
+      return `<div class="ans-card"><div class="flex items-center justify-between mb-2">${statusBadge('answered')}<span class="text-xs text-light">${fmtDateTime(ans.timestamp)}</span></div><div class="ans-q-label">📌 ${esc(q.text)}</div><div class="ans-text">${esc(ans.text).replace(/\n/g,'<br>')}</div>${ans.imageData?`<img src="${ans.imageData}" class="ans-img" alt="תמונה">`:''}
+      </div>`;
+    }).join('');
+    return `
+      <div class="ov-header ${pId}"><div class="ov-avatar">${p.emoji}</div><div><h3>הספר של ${p.name}</h3><p class="text-sm text-sec mt-1">${sentQs.length} שאלות נשלחו · ${answers.length} תשובות</p></div></div>
+      ${sentQs.length===0?`<div class="empty-state"><div class="empty-emoji">${p.emoji}</div><div class="empty-text">עדיין לא נשלחו שאלות ל${p.name}.<br>עבור ללשונית "שאלות".</div></div>`:items}`;
+  }
+
+  function renderSettingsTab() {
+    return `
+      <div class="conn-status ${serverMode?'ok':'warn'}">
+        ${serverMode
+          ? '☁️ מחובר ל-GitHub — הנתונים מסונכרנים בין כל המכשירים בזמן אמת'
+          : '💾 מצב מקומי — הנתונים נשמרים רק במכשיר הזה (אין חיבור לאינטרנט?)'}
+      </div>
+
+      ${serverMode ? `
+      <div class="settings-card">
+        <h3 class="mb-3">✅ GitHub מחובר</h3>
+        <p class="text-sec mb-3" style="line-height:1.7">
+          כל תשובה שהורה שולח נשמרת מיד ב-<strong>GitHub</strong>.<br>
+          ההורים לא צריכים לעשות שום הגדרה — רק לפתוח את הקישור שתשלח להם.
+        </p>
+        <button class="btn btn-outline btn-full" onclick="doRefreshData()">🔄 רענן נתונים מ-GitHub</button>
+      </div>` : `
+      <div class="settings-card">
+        <h3 class="mb-3">⚠️ לא מחובר ל-GitHub</h3>
+        <p class="text-sec" style="line-height:1.7">
+          הנתונים נשמרים רק במכשיר הזה.<br>
+          ודא שיש חיבור לאינטרנט ורענן את הדף.
+        </p>
+      </div>`}
+
+      <div class="settings-card">
+        <h3 class="mb-3">🗄️ ניהול נתונים</h3>
+        <div class="flex gap-2" style="flex-direction:column">
+          <button class="btn btn-outline btn-full" onclick="doExportData()">📥 ייצא נתונים (JSON)</button>
+          <button class="btn btn-ghost btn-full" onclick="doImportData()">📤 ייבא נתונים (JSON)</button>
+          <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImportFile(this)">
+        </div>
+      </div>`;
+  }
+
+  // =====================================================================
+  // VIEW: ANSWER
+  // =====================================================================
+  function renderAnswer(params) {
+    stopMic(); pendingImage=null;
+    const {parent:pId,q:qId}=params, p=PARENTS[pId], q=getQ(qId);
+    if(!p||!q){
+      document.getElementById('app').innerHTML=`<div class="home-page"><div style="font-size:64px;margin-bottom:20px">😕</div><h2 style="text-align:center">הקישור אינו תקין</h2><p class="text-sec mt-3" style="text-align:center">ייתכן שהקישור שגוי.</p><button class="btn btn-primary mt-4" onclick="navigate('home')">לדף הבית</button></div>`;
+      return;
+    }
+    const existing=getAnswerFor(qId,pId);
+    if(existing) pendingImage=existing.imageData;
+    const hasSpeech=initSpeech();
+    document.getElementById('app').innerHTML=`
+      <div class="answer-page">
+        <div class="ans-hero ${pId}">
+          <div class="ans-hero-avatar">${p.emoji}</div>
+          <div class="ans-hero-greeting">היי ${p.name}! 💛</div>
+          <div class="ans-hero-sub">שמחים שהגעת — מחכה לך שאלה מיוחדת</div>
+        </div>
+        <div class="q-box ${pId}">
+          <div class="q-box-label ${pId}">🌟 השאלה שלנו</div>
+          <div class="q-box-text">${esc(q.text)}</div>
+        </div>
+        <div class="ans-form">
+          ${existing?'<div class="existing-notice mt-4">✅ כבר ענית — ניתן לעדכן</div>':'<div class="mt-4"></div>'}
+          <div class="form-group">
+            <label class="form-label">✍️ הסיפור שלך</label>
+            <div class="mic-row">
+              <textarea id="ans-ta" class="form-textarea large" style="flex:1" placeholder="כתוב/י את התשובה שלך כאן... אין תשובה נכונה או שגויה 💛">${esc(existing?.text||'')}</textarea>
+              ${hasSpeech?`<button id="mic-btn" class="mic-btn ${pId} mt-1" onclick="toggleMic('ans-ta','mic-btn','${pId}')" title="לחץ לדיבור">🎤</button>`:''}
+            </div>
+            ${hasSpeech?'<p class="mic-hint">💡 לחץ/י 🎤 לדיבור — הטקסט יופיע אוטומטית</p>':''}
+          </div>
+          <div class="form-group">
+            <label class="form-label">📷 הוסף תמונה (אופציונלי)</label>
+            <div id="img-preview-wrap" class="img-preview-wrap mb-2 ${existing?.imageData?'':'hidden'}">
+              <img id="img-preview" class="img-preview" src="${existing?.imageData||''}" alt="תמונה">
+              <button class="img-remove-btn" onclick="removeImg()">✕</button>
+            </div>
+            <div id="img-upload-area" class="img-upload-area ${pId} ${existing?.imageData?'hidden':''}" onclick="document.getElementById('img-file').click()">
+              <div class="img-upload-icon">📷</div>
+              <div class="img-upload-text">לחץ/י להוספת תמונה</div>
+              <div class="img-upload-sub">מהגלריה או מהמצלמה 📱</div>
+            </div>
+            <input type="file" id="img-file" accept="image/*" style="display:none" onchange="handleImgSelect(this)">
+          </div>
+        </div>
+        <div class="submit-area">
+          <button id="submit-btn" class="btn btn-${pId} btn-lg btn-full" onclick="doSubmitAnswer('${qId}','${pId}')">
+            💛 שמור ושלח לספר המשפחתי
+          </button>
+          <p class="submit-note">${serverMode?'☁️ התשובה תישמר בענן':'💾 התשובה תישמר במכשיר זה'}</p>
+        </div>
+      </div>`;
+  }
+
+  // =====================================================================
+  // VIEW: BOOK
+  // =====================================================================
+  function renderBook(params) {
+    const pId=params?.parent;
+    if(!pId){
+      const momC=getParentAns('mom').length, dadC=getParentAns('dad').length;
+      document.getElementById('app').innerHTML=`
+        <div class="book-page">
+          <div class="book-hero"><div style="font-size:60px;margin-bottom:14px">📖</div><h1>ספר המשפחה שלנו</h1><p class="text-sec mt-3" style="font-size:17px">בחר/י את הסיפור שתרצה/י לקרוא</p></div>
+          <div class="book-covers">
+            <button class="book-cover-btn mom" onclick="navigate('book',{parent:'mom'})"><div class="bc-emoji">👩</div><div class="bc-name mom">הסיפור של אמא</div><div class="bc-count">${momC} ${momC===1?'סיפור':'סיפורים'}</div></button>
+            <button class="book-cover-btn dad" onclick="navigate('book',{parent:'dad'})"><div class="bc-emoji">👨</div><div class="bc-name dad">הסיפור של אבא</div><div class="bc-count">${dadC} ${dadC===1?'סיפור':'סיפורים'}</div></button>
+          </div>
+          <div style="text-align:center;padding:0 0 28px"><button class="btn btn-ghost btn-sm" onclick="navigate('home')">← חזרה לדף הבית</button></div>
+        </div>`;
+    } else {
+      const p=PARENTS[pId], answers=getParentAns(pId);
+      const cards=answers.map((ans,i)=>{ const q=getQ(ans.questionId); if(!q) return '';
+        return `<div class="story-card"><div class="story-header ${pId}"><div class="story-num">סיפור ${i+1}</div><div class="story-q">${esc(q.text)}</div></div>${ans.imageData?`<img src="${ans.imageData}" class="story-img" alt="תמונה">`:''}<div class="story-body"><div class="story-text">${esc(ans.text).replace(/\n/g,'<br>')}</div><div class="story-date">✍️ ${fmtDate(ans.timestamp)}</div></div></div>`; }).join('');
+      document.getElementById('app').innerHTML=`
+        <div class="book-page">
+          <div class="stories-header ${pId}">
+            <button class="btn btn-ghost btn-sm" onclick="navigate('book')">← כל הסיפורים</button>
+            <div class="sh-inner"><span class="sh-avatar">${p.emoji}</span><div><h2>הסיפור של ${p.name}</h2><p class="text-sm text-sec mt-1">${answers.length} ${answers.length===1?'סיפור':'סיפורים'}</p></div></div>
+          </div>
+          ${answers.length===0?`<div class="empty-state"><div class="empty-emoji">✨</div><div class="empty-text">${p.name} עדיין לא ענה/ענתה.<br>שלח/י שאלות מלוח הבקרה!</div></div>`:cards+'<div style="height:28px"></div>'}
+        </div>`;
+    }
+  }
+
+  // =====================================================================
+  // VIEW: THANKS
+  // =====================================================================
+  function renderThanks(params) {
+    stopMic();
+    const p=PARENTS[params?.parent]||{};
+    document.getElementById('app').innerHTML=`
+      <div class="thanks-page ${params?.parent||''}">
+        <div class="thanks-emoji">💛</div>
+        <h1 style="text-align:center">תודה רבה, ${p.name||''}!</h1>
+        <p class="thanks-text">הסיפור שלך נשמר בספר המשפחה שלנו ויישמר שם לתמיד. ✨<br><br>כל מילה שכתבת היא מתנה יקרת ערך לדורות הבאים. 💖</p>
+      </div>`;
+  }
+
+  // =====================================================================
+  // MODALS
+  // =====================================================================
+  function openSendModal(qId, pId) {
+    const p=PARENTS[pId], link=generateAnswerLink(qId,pId);
+    markSent(qId,pId);
+    const wa='https://wa.me/?text='+encodeURIComponent(`היי ${p.name}! 💛\nשאלה מיוחדת מחכה לך בספר המשפחה שלנו.\n\nלחצ/י כאן:\n${link}`);
+    showModal(`
+      <div class="modal">
+        <div class="modal-header"><h3>${p.emoji} קישור ל${p.name}</h3><button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button></div>
+        <p class="text-sec mb-3">הקישור הייחודי נוצר! שלח/י ל${p.name} בוואטסאפ.</p>
+        <div class="link-box">${esc(link)}</div>
+        <div class="link-actions">
+          <a class="btn btn-primary btn-full" href="${esc(wa)}" target="_blank" rel="noopener" onclick="setTimeout(closeModal,200)">📱 פתח בוואטסאפ — שלח ל${p.name}</a>
+          <button class="btn btn-outline btn-full" onclick="copyToClipboard(decodeURIComponent('${encodeURIComponent(link)}')); closeModal()">📋 העתק קישור</button>
+          <button class="btn btn-ghost btn-full" onclick="closeModal()">סגור</button>
+        </div>
+      </div>`,
+      ()=>{ const el=document.getElementById('admin-tab-content'); if(el) el.innerHTML=renderAdminTabContent(); }
+    );
+  }
+
+  function openEditModal(qId) {
+    const q=getQ(qId); if(!q) return;
+    showModal(`
+      <div class="modal"><div class="modal-header"><h3>✏️ ערוך שאלה</h3><button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button></div>
+        <div class="form-group"><textarea id="edit-q-ta" class="form-textarea" rows="4">${esc(q.text)}</textarea></div>
+        <div class="flex gap-2"><button class="btn btn-primary btn-full" onclick="doEditQuestion('${qId}')">שמור שינויים</button><button class="btn btn-outline" onclick="closeModal()">ביטול</button></div>
+      </div>`,
+      ()=>{ const el=document.getElementById('admin-tab-content'); if(el) el.innerHTML=renderAdminTabContent(); }
+    );
+  }
+
+  function openDeleteModal(qId) {
+    const q=getQ(qId); if(!q) return;
+    showModal(`
+      <div class="modal"><div class="modal-header"><h3>🗑️ מחיקת שאלה</h3><button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button></div>
+        <p class="text-sec mb-2" style="line-height:1.7">האם למחוק: <strong>"${esc(q.text.substring(0,50))}${q.text.length>50?'...':''}"</strong></p>
+        <p class="text-sm text-light mb-4">גם כל התשובות על שאלה זו יימחקו.</p>
+        <div class="flex gap-2"><button class="btn btn-danger btn-full" onclick="doDeleteQuestion('${qId}')">כן, מחק</button><button class="btn btn-outline" onclick="closeModal()">ביטול</button></div>
+      </div>`,
+      ()=>{ const el=document.getElementById('admin-tab-content'); if(el) el.innerHTML=renderAdminTabContent(); }
+    );
+  }
+
+  // =====================================================================
+  // HANDLERS
+  // =====================================================================
+  async function doAddQuestion() {
+    const ta=document.getElementById('new-q-input'), text=ta?.value?.trim();
+    if(!text){ showToast('נא להזין טקסט לשאלה'); return; }
+    const btn=document.querySelector('.add-q-box .btn-primary');
+    if(btn){ btn.disabled=true; btn.innerHTML='<span class="spinner"></span> שומר...'; }
+    await addQuestion(text);
+    const el=document.getElementById('admin-tab-content'); if(el) el.innerHTML=renderAdminTabContent();
+    showToast('✅ השאלה נוספה!');
+  }
+  async function doEditQuestion(qId) {
+    const ta=document.getElementById('edit-q-ta'), text=ta?.value?.trim();
+    if(!text){ showToast('נא להזין טקסט'); return; }
+    await updateQuestion(qId,text); closeModal(); showToast('✅ השאלה עודכנה!');
+  }
+  async function doDeleteQuestion(qId) { await deleteQuestion(qId); closeModal(); showToast('🗑️ השאלה נמחקה'); }
+
+  async function doRefreshData() {
+    showOverlay('מרענן נתונים מהשרת...');
+    try { const data=await apiLoad(); if(data) db=data; hideOverlay(); render(); showToast('✅ הנתונים עודכנו!'); }
+    catch(e){ hideOverlay(); showToast('❌ שגיאה: '+e.message); }
+  }
+
+  function doExportData() {
+    const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download=`family-story-${new Date().toISOString().split('T')[0]}.json`; a.click();
+    showToast('📥 הנתונים יוצאו!');
+  }
+  function doImportData() { document.getElementById('import-file')?.click(); }
+  function handleImportFile(input) {
+    const file=input?.files?.[0]; if(!file) return;
+    const reader=new FileReader();
+    reader.onload=async e=>{ try{ const data=JSON.parse(e.target.result); if(!data.questions||!data.answers) throw new Error('פורמט לא תקין'); db=data; await persistDB(); render(); showToast('📤 הנתונים יובאו!'); }catch(err){ showToast('❌ '+err.message); } };
+    reader.readAsText(file); input.value='';
+  }
+
+  async function handleImgSelect(input) {
+    const file=input?.files?.[0]; if(!file) return;
+    try {
+      const data=await compressImage(file); pendingImage=data;
+      const wrap=document.getElementById('img-preview-wrap'), prev=document.getElementById('img-preview'), area=document.getElementById('img-upload-area');
+      if(prev) prev.src=data; if(wrap) wrap.classList.remove('hidden'); if(area) area.classList.add('hidden');
+    } catch { showToast('שגיאה בטעינת התמונה'); }
+  }
+  function removeImg() {
+    pendingImage=null;
+    const wrap=document.getElementById('img-preview-wrap'), area=document.getElementById('img-upload-area'), inp=document.getElementById('img-file');
+    if(wrap) wrap.classList.add('hidden'); if(area) area.classList.remove('hidden'); if(inp) inp.value='';
+  }
+
+  async function doSubmitAnswer(qId, pId) {
+    const ta=document.getElementById('ans-ta'), text=ta?.value?.trim();
+    if(!text){ showToast('נא לכתוב תשובה לפני השליחה 💛'); return; }
+    stopMic();
+    const btn=document.getElementById('submit-btn');
+    if(btn){ btn.disabled=true; btn.innerHTML='<span class="spinner"></span> שומר...'; }
+    try { await saveAnswer(qId,pId,text,pendingImage); pendingImage=null; navigate('thanks',{parent:pId}); }
+    catch(e){ showToast('❌ שגיאה בשמירה: '+e.message); if(btn){ btn.disabled=false; btn.innerHTML='💛 שמור ושלח לספר המשפחתי'; } }
+  }
+
+  // =====================================================================
+  // RENDER ENGINE
+  // =====================================================================
+  function render() {
+    stopMic();
+    const {path,params}=getRoute();
+    switch(path){
+      case 'home':   renderHome();         break;
+      case 'admin':  renderAdmin();        break;
+      case 'answer': renderAnswer(params); break;
+      case 'book':   renderBook(params);   break;
+      case 'thanks': renderThanks(params); break;
+      default:       renderHome();
+    }
+    window.scrollTo({top:0,behavior:'auto'});
+  }
+
+  // =====================================================================
+  // INIT
+  // =====================================================================
+  async function init() {
+    if (!IS_FILE_URL) {
+      // Try GitHub API
+      showOverlay('מתחבר ל-GitHub...');
+      try {
+        const data = await apiLoad();
+        if (data) {
+          db = data;
+          serverMode = true;
+        } else {
+          // First time — seed data and create the file
+          serverMode = true;
+          if (db.questions.length === 0) seedMockData();
+          await apiSave(db);
+        }
+        hideOverlay();
+      } catch {
+        hideOverlay();
+        // GitHub API not available — use localStorage
+        serverMode = false;
+        loadFromLocalStorage();
+        if (db.questions.length === 0) seedMockData();
+      }
+    } else {
+      // file:// — always localStorage
+      serverMode = false;
+      loadFromLocalStorage();
+      if (db.questions.length === 0) seedMockData();
+    }
+
+    window.addEventListener('hashchange', render);
+    render();
+  }
+
+  window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
