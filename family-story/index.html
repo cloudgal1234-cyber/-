@@ -349,9 +349,9 @@
     db.sent[qId][pId]=true;
     await persistDB();
   }
-  async function saveAnswer(qId, pId, text, imageData, videoPath) {
+  async function saveAnswer(qId, pId, text, imageData, videoPath, audioPath) {
     const idx=db.answers.findIndex(a=>a.questionId===qId&&a.parentId===pId);
-    const entry={ id:'a'+(db.nextId++), questionId:qId, parentId:pId, text:text.trim(), imageData:imageData||null, videoPath:videoPath||null, timestamp:new Date().toISOString() };
+    const entry={ id:'a'+(db.nextId++), questionId:qId, parentId:pId, text:(text||'').trim(), imageData:imageData||null, videoPath:videoPath||null, audioPath:audioPath||null, timestamp:new Date().toISOString() };
     if(idx>=0) db.answers[idx]=entry; else db.answers.push(entry);
     await persistDB();
   }
@@ -448,28 +448,72 @@
   }
 
   // =====================================================================
-  // SPEECH
+  // AUDIO RECORDING
   // =====================================================================
-  let recognition=null, isRecording=false;
-  function initSpeech() {
-    const SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return false;
-    if(!recognition){ recognition=new SR(); recognition.lang='he-IL'; recognition.continuous=true; recognition.interimResults=true; }
-    return true;
+  let mediaRecorder=null, audioChunks=[], pendingAudio=null, recTimer=null;
+
+  function stopMic() {
+    if(mediaRecorder && mediaRecorder.state!=='inactive'){ mediaRecorder.stop(); }
+    clearInterval(recTimer);
   }
-  function toggleMic(taId,btnId,pCls) {
-    if(!recognition){ showToast('דפדפן זה אינו תומך בזיהוי דיבור'); return; }
-    const btn=document.getElementById(btnId),ta=document.getElementById(taId); if(!btn||!ta) return;
-    if(isRecording){
-      recognition.stop(); isRecording=false; btn.classList.remove('recording'); btn.innerHTML='🎤';
-    } else {
-      let base=ta.value;
-      recognition.onresult=ev=>{ let fin='',int=''; for(let i=ev.resultIndex;i<ev.results.length;i++){ const t=ev.results[i][0].transcript; if(ev.results[i].isFinal) fin+=t; else int+=t; } if(fin) base+=fin+' '; ta.value=base+int; ta.scrollTop=ta.scrollHeight; };
-      recognition.onerror=e=>{ if(e.error!=='no-speech') showToast('שגיאה: '+e.error); isRecording=false; btn.classList.remove('recording'); btn.innerHTML='🎤'; };
-      recognition.onend=()=>{ if(isRecording) recognition.start(); };
-      recognition.start(); isRecording=true; btn.classList.add('recording'); btn.innerHTML='⏹️';
+
+  async function toggleAudioRec(pId) {
+    if(mediaRecorder && mediaRecorder.state==='recording'){
+      mediaRecorder.stop(); clearInterval(recTimer);
+      const btn=document.getElementById('mic-btn');
+      if(btn){ btn.classList.remove('recording'); btn.innerHTML='🎤'; }
+      document.getElementById('rec-status')?.classList.add('hidden');
+      return;
     }
+    try {
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      const mime=MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':'audio/mp4';
+      mediaRecorder=new MediaRecorder(stream,{mimeType:mime});
+      audioChunks=[];
+      mediaRecorder.ondataavailable=e=>{ if(e.data.size>0) audioChunks.push(e.data); };
+      mediaRecorder.onstop=()=>{
+        stream.getTracks().forEach(t=>t.stop());
+        const blob=new Blob(audioChunks,{type:mime});
+        pendingAudio={blob,localUrl:URL.createObjectURL(blob),mime};
+        const wrap=document.getElementById('audio-preview-wrap'), prev=document.getElementById('audio-preview');
+        if(prev){ prev.src=pendingAudio.localUrl; wrap?.classList.remove('hidden'); }
+      };
+      mediaRecorder.start(500);
+      const btn=document.getElementById('mic-btn');
+      const status=document.getElementById('rec-status');
+      if(btn){ btn.classList.add('recording'); btn.innerHTML='⏹️'; }
+      if(status) status.classList.remove('hidden');
+      const t0=Date.now();
+      recTimer=setInterval(()=>{
+        const s=Math.floor((Date.now()-t0)/1000), m=Math.floor(s/60);
+        const el=document.getElementById('rec-timer'); if(el) el.textContent=`${m}:${(s%60).toString().padStart(2,'0')}`;
+      },500);
+    } catch(e){ showToast('⚠️ לא ניתן לגשת למיקרופון: '+e.message); }
   }
-  function stopMic() { if(recognition&&isRecording){ recognition.stop(); isRecording=false; } }
+
+  function removeAudio() {
+    pendingAudio=null;
+    const wrap=document.getElementById('audio-preview-wrap'), prev=document.getElementById('audio-preview');
+    if(prev) prev.src=''; if(wrap) wrap.classList.add('hidden');
+  }
+
+  async function uploadAudioToGitHub(blob, mime, qId, pId) {
+    const ext=mime.includes('mp4')?'m4a':'webm';
+    const path=`data/audio/${qId}-${pId}-${Date.now()}.${ext}`;
+    const base64=await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(blob); });
+    const r=await fetch(`https://api.github.com/repos/cloudgal1234-cyber/-/contents/${path}`,{method:'PUT',headers:{'Authorization':`token ${GH_PAT}`,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({message:'add audio',content:base64,branch:'main'})});
+    if(!r.ok){ const e=await r.json(); throw new Error(e.message||'שגיאה בהעלאת ההקלטה'); }
+    return path;
+  }
+
+  async function getAudioObjectUrl(audioPath) {
+    if(videoUrlCache[audioPath]) return videoUrlCache[audioPath];
+    const r=await fetch(`https://api.github.com/repos/cloudgal1234-cyber/-/contents/${audioPath}`,{headers:{'Authorization':`token ${GH_PAT}`}});
+    const json=await r.json(); let blob;
+    if(json.content){ const bin=atob(json.content.replace(/\n/g,'')); const bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i); blob=new Blob([bytes],{type:'audio/webm'}); }
+    else { const raw=await fetch(json.download_url,{headers:{'Authorization':`token ${GH_PAT}`}}); blob=await raw.blob(); }
+    const url=URL.createObjectURL(blob); videoUrlCache[audioPath]=url; return url;
+  }
 
   // =====================================================================
   // IMAGE & VIDEO STATE
@@ -674,7 +718,7 @@
     const existing=getAnswerFor(qId,pId);
     if(existing) pendingImage=existing.imageData;
     const hasVideo=!!(existing?.videoPath);
-    const hasSpeech=initSpeech();
+    const hasAudio=!!(existing?.audioPath);
     document.getElementById('app').innerHTML=`
       <div class="answer-page">
         <div class="ans-hero ${pId}">
@@ -689,12 +733,22 @@
         <div class="ans-form">
           ${existing?'<div class="existing-notice mt-4">✅ כבר ענית — ניתן לעדכן</div>':'<div class="mt-4"></div>'}
           <div class="form-group">
-            <label class="form-label">✍️ הסיפור שלך</label>
-            <div class="mic-row">
-              <textarea id="ans-ta" class="form-textarea large" style="flex:1" placeholder="כתוב/י את התשובה שלך כאן... אין תשובה נכונה או שגויה 💛">${esc(existing?.text||'')}</textarea>
-              ${hasSpeech?`<button id="mic-btn" class="mic-btn ${pId} mt-1" onclick="toggleMic('ans-ta','mic-btn','${pId}')" title="לחץ לדיבור">🎤</button>`:''}
+            <label class="form-label">✍️ הסיפור שלך (אופציונלי אם יש הקלטה)</label>
+            <textarea id="ans-ta" class="form-textarea large" placeholder="כתוב/י את התשובה שלך כאן... אין תשובה נכונה או שגויה 💛">${esc(existing?.text||'')}</textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">🎤 הקלטה קולית (אופציונלי)</label>
+            <div id="audio-preview-wrap" class="${hasAudio?'':'hidden'}" style="margin-bottom:8px">
+              <audio id="audio-preview" controls style="width:100%;border-radius:12px"></audio>
+              <button class="btn btn-ghost btn-sm" style="margin-top:4px;color:#e74c3c;width:100%" onclick="removeAudio()">🗑️ מחק הקלטה</button>
             </div>
-            ${hasSpeech?'<p class="mic-hint">💡 לחץ/י 🎤 לדיבור — הטקסט יופיע אוטומטית</p>':''}
+            <div id="rec-status" class="hidden" style="display:flex;align-items:center;gap:10px;padding:10px 0;color:#e74c3c;font-size:15px">
+              <span style="font-size:20px">⏺</span> מקליט... <strong id="rec-timer">0:00</strong>
+            </div>
+            <button id="mic-btn" class="mic-btn ${pId} btn-full" style="width:100%;border-radius:var(--r-full);height:56px;font-size:15px;font-weight:600;gap:8px" onclick="toggleAudioRec('${pId}')">
+              🎤 לחץ/י להקלטה
+            </button>
+            <p class="mic-hint">💡 לחץ/י להתחלת הקלטה — לחץ/י שוב לעצירה</p>
           </div>
           <div class="form-group">
             <label class="form-label">📷 הוסף תמונה (אופציונלי)</label>
@@ -753,7 +807,8 @@
       const p=PARENTS[pId], answers=getParentAns(pId);
       const cards=answers.map((ans,i)=>{ const q=getQ(ans.questionId); if(!q) return '';
         const vidHtml=ans.videoPath?`<div id="storyv-${ans.id}" style="margin:12px 0"><button class="btn btn-outline btn-sm btn-full" onclick="loadStoryVideo('${ans.id}','${esc(ans.videoPath)}')">▶ הצג ווידיאו</button></div>`:'';
-        return `<div class="story-card"><div class="story-header ${pId}"><div class="story-num">סיפור ${i+1}</div><div class="story-q">${esc(q.text)}</div></div>${ans.imageData?`<img src="${ans.imageData}" class="story-img" alt="תמונה">`:''}${vidHtml}<div class="story-body"><div class="story-text">${esc(ans.text).replace(/\n/g,'<br>')}</div><div class="story-date">✍️ ${fmtDate(ans.timestamp)}</div></div></div>`; }).join('');
+        const audHtml=ans.audioPath?`<div id="storya-${ans.id}" style="margin:12px 0"><button class="btn btn-outline btn-sm btn-full" onclick="loadStoryAudio('${ans.id}','${esc(ans.audioPath)}')">🎤 הפעל הקלטה קולית</button></div>`:'';
+        return `<div class="story-card"><div class="story-header ${pId}"><div class="story-num">סיפור ${i+1}</div><div class="story-q">${esc(q.text)}</div></div>${ans.imageData?`<img src="${ans.imageData}" class="story-img" alt="תמונה">`:''}${audHtml}${vidHtml}<div class="story-body">${ans.text?`<div class="story-text">${esc(ans.text).replace(/\n/g,'<br>')}</div>`:''}<div class="story-date">✍️ ${fmtDate(ans.timestamp)}</div></div></div>`; }).join('');
       document.getElementById('app').innerHTML=`
         <div class="book-page">
           <div class="stories-header ${pId}">
@@ -851,6 +906,14 @@
       wrap.innerHTML=`<video src="${url}" controls style="width:100%;border-radius:12px;max-height:300px;margin-top:4px"></video>`;
     } catch { wrap.innerHTML='<p style="color:#e74c3c;font-size:13px">⚠️ שגיאה בטעינת הווידיאו</p>'; }
   }
+  async function loadStoryAudio(answerId, audioPath) {
+    const wrap=document.getElementById('storya-'+answerId); if(!wrap) return;
+    wrap.innerHTML='<p style="font-size:13px;color:var(--text-sec);padding:8px 0">⏳ טוען הקלטה...</p>';
+    try {
+      const url=await getAudioObjectUrl(audioPath);
+      wrap.innerHTML=`<audio src="${url}" controls style="width:100%;border-radius:12px;margin-top:4px"></audio>`;
+    } catch { wrap.innerHTML='<p style="color:#e74c3c;font-size:13px">⚠️ שגיאה בטעינת ההקלטה</p>'; }
+  }
 
   async function doTestGH() {
     showToast('⏳ בודק חיבור...',8000);
@@ -909,22 +972,29 @@
   }
 
   async function doSubmitAnswer(qId, pId) {
-    const ta=document.getElementById('ans-ta'), text=ta?.value?.trim();
-    if(!text){ showToast('נא לכתוב תשובה לפני השליחה 💛'); return; }
+    const text=document.getElementById('ans-ta')?.value?.trim()||'';
+    const existing=getAnswerFor(qId,pId);
+    if(!text && !pendingAudio && !existing?.audioPath){ showToast('נא לכתוב תשובה או להקליט קול 💛'); return; }
     stopMic();
     const btn=document.getElementById('submit-btn');
     if(btn){ btn.disabled=true; btn.innerHTML='<span class="spinner"></span> שומר...'; }
     const prog=document.getElementById('vid-progress');
     try {
-      let videoPath=getAnswerFor(qId,pId)?.videoPath||null;
+      let videoPath=existing?.videoPath||null;
+      let audioPath=existing?.audioPath||null;
       if(pendingVideo && serverMode){
         if(prog) prog.classList.remove('hidden');
         showOverlay('מעלה ווידיאו...');
         videoPath=await uploadVideoToGitHub(pendingVideo.file,qId,pId);
         hideOverlay(); if(prog) prog.classList.add('hidden');
       }
-      await saveAnswer(qId,pId,text,pendingImage,videoPath);
-      pendingImage=null; pendingVideo=null;
+      if(pendingAudio && serverMode){
+        showOverlay('מעלה הקלטה קולית...');
+        audioPath=await uploadAudioToGitHub(pendingAudio.blob,pendingAudio.mime,qId,pId);
+        hideOverlay();
+      }
+      await saveAnswer(qId,pId,text,pendingImage,videoPath,audioPath);
+      pendingImage=null; pendingVideo=null; pendingAudio=null;
       navigate('thanks',{parent:pId});
     }
     catch(e){
