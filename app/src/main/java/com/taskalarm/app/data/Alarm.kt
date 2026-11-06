@@ -4,22 +4,11 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-/** How the alarm (and its protection) is defeated. */
+/** How the alarm (and its protection) is defeated. Every task requires getting out of bed. */
 enum class TaskType(val title: String, val description: String) {
-    BARCODE("סריקת ברקוד", "לקום ולסרוק מוצר שבחרת מראש"),
-    SHAKE("טלטול", "לנער את הטלפון בחוזקה"),
-    STEPS("צעדים", "ללכת מספר צעדים עם הטלפון"),
-    MATH("תרגילי חשבון", "לפתור תרגילים כדי להעיר את המוח"),
-    MEMORY("משחק זיכרון", "לחזור על רצף משבצות מהבהבות"),
-    TYPING("הקלדת משפט", "להקליד משפט בדיוק כפי שמוצג"),
-}
-
-/** Difficulty for the math task. */
-object MathDifficulty {
-    const val EASY = 1
-    const val MEDIUM = 2
-    const val HARD = 3
-    val names = listOf("קל", "בינוני", "קשה")
+    MISSION("משימות בוקר", "${MissionLibrary.all.size} משימות: ציד ברקודים, אור והליכה"),
+    BARCODE("ברקוד קבוע", "לסרוק מוצר מסוים שבחרת מראש"),
+    STEPS("הליכה", "ללכת מספר צעדים עם הטלפון"),
 }
 
 @Entity(tableName = "alarms")
@@ -31,15 +20,14 @@ data class Alarm(
     val daysMask: Int = 0,
     val label: String = "",
     val enabled: Boolean = true,
-    val taskType: TaskType = TaskType.BARCODE,
+    val taskType: TaskType = TaskType.MISSION,
     val barcodeValue: String? = null,
     val barcodeFormat: String? = null,
-    val shakeCount: Int = 30,
-    @ColumnInfo(defaultValue = "50") val stepCount: Int = 50,
-    @ColumnInfo(defaultValue = "3") val mathCount: Int = 3,
-    @ColumnInfo(defaultValue = "2") val mathDifficulty: Int = MathDifficulty.MEDIUM,
-    @ColumnInfo(defaultValue = "3") val memoryRounds: Int = 3,
-    @ColumnInfo(defaultValue = "2") val typingCount: Int = 2,
+    @ColumnInfo(defaultValue = "100") val stepCount: Int = 100,
+    /** Fixed mission from [MissionLibrary]; null = a random mission every time. */
+    val missionId: String? = null,
+    /** Difficulty filter for random missions ([MissionDifficulty]). */
+    @ColumnInfo(defaultValue = "0") val missionDifficulty: Int = MissionDifficulty.ANY,
     val sound: String = SoundIds.SIREN,
     /** Percent of the alarm stream's max volume forced while ringing. */
     val volumePercent: Int = 100,
@@ -50,15 +38,13 @@ data class Alarm(
     /** An armed alarm is protected: disabling, editing or deleting it requires the task. */
     val isProtected: Boolean get() = enabled
 
-    /** Short Hebrew description of the task, e.g. "50 צעדים". */
+    /** Short Hebrew description of the task. */
     val taskSummary: String
         get() = when (taskType) {
-            TaskType.BARCODE -> "סריקת ברקוד"
-            TaskType.SHAKE -> "$shakeCount ניעורים"
+            TaskType.BARCODE -> "ברקוד קבוע"
             TaskType.STEPS -> "$stepCount צעדים"
-            TaskType.MATH -> "$mathCount תרגילים (${MathDifficulty.names[(mathDifficulty - 1).coerceIn(0, 2)]})"
-            TaskType.MEMORY -> "זיכרון · $memoryRounds סבבים"
-            TaskType.TYPING -> "הקלדת $typingCount משפטים"
+            TaskType.MISSION -> MissionLibrary.get(missionId)?.title
+                ?: "משימה אקראית" + if (missionDifficulty != MissionDifficulty.ANY) " (${MissionDifficulty.name(missionDifficulty)})" else ""
         }
 }
 

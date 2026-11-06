@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Alarm::class], version = 2, exportSchema = false)
+@Database(entities = [Alarm::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun alarmDao(): AlarmDao
 
@@ -23,6 +23,33 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v3: tasks that can be done in bed (shake, math, memory, typing) were removed in favour of
+         * get-out-of-bed missions. Such alarms become random missions; their settings columns are dropped.
+         */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `alarms_new` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `hour` INTEGER NOT NULL, " +
+                        "`minute` INTEGER NOT NULL, `daysMask` INTEGER NOT NULL, `label` TEXT NOT NULL, " +
+                        "`enabled` INTEGER NOT NULL, `taskType` TEXT NOT NULL, `barcodeValue` TEXT, " +
+                        "`barcodeFormat` TEXT, `stepCount` INTEGER NOT NULL DEFAULT 100, `missionId` TEXT, " +
+                        "`missionDifficulty` INTEGER NOT NULL DEFAULT 0, `sound` TEXT NOT NULL, " +
+                        "`volumePercent` INTEGER NOT NULL, `vibrate` INTEGER NOT NULL)"
+                )
+                db.execSQL(
+                    "INSERT INTO `alarms_new` (id, hour, minute, daysMask, label, enabled, taskType, " +
+                        "barcodeValue, barcodeFormat, stepCount, missionId, missionDifficulty, sound, volumePercent, vibrate) " +
+                        "SELECT id, hour, minute, daysMask, label, enabled, " +
+                        "CASE WHEN taskType IN ('BARCODE', 'STEPS') THEN taskType ELSE 'MISSION' END, " +
+                        "barcodeValue, barcodeFormat, stepCount, NULL, 0, sound, volumePercent, vibrate FROM `alarms`"
+                )
+                db.execSQL("DROP TABLE `alarms`")
+                db.execSQL("ALTER TABLE `alarms_new` RENAME TO `alarms`")
+            }
+        }
+
         @Volatile private var instance: AppDatabase? = null
 
         fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
@@ -32,7 +59,7 @@ abstract class AppDatabase : RoomDatabase() {
                 context.applicationContext.createDeviceProtectedStorageContext(),
                 AppDatabase::class.java,
                 "task_alarm.db"
-            ).addMigrations(MIGRATION_1_2).build().also { instance = it }
+            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { instance = it }
         }
     }
 }

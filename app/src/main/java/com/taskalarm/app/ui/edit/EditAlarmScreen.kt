@@ -84,7 +84,6 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.IntentCompat
 import androidx.compose.foundation.BorderStroke
 import android.os.Build
-import com.taskalarm.app.data.MathDifficulty
 import com.taskalarm.app.ui.task.TaskChallenge
 import com.taskalarm.app.ui.task.icon
 import com.taskalarm.app.alarm.AlarmSoundPlayer
@@ -121,12 +120,10 @@ fun EditAlarmScreen(initial: Alarm, isNew: Boolean, onSave: (Alarm) -> Unit, onB
     var taskType by rememberSaveable { mutableStateOf(initial.taskType) }
     var barcodeValue by rememberSaveable { mutableStateOf(initial.barcodeValue) }
     var barcodeFormat by rememberSaveable { mutableStateOf(initial.barcodeFormat) }
-    var shakeCount by rememberSaveable { mutableFloatStateOf(initial.shakeCount.toFloat()) }
     var stepCount by rememberSaveable { mutableFloatStateOf(initial.stepCount.toFloat()) }
-    var mathCount by rememberSaveable { mutableFloatStateOf(initial.mathCount.toFloat()) }
-    var mathDifficulty by rememberSaveable { mutableIntStateOf(initial.mathDifficulty) }
-    var memoryRounds by rememberSaveable { mutableFloatStateOf(initial.memoryRounds.toFloat()) }
-    var typingCount by rememberSaveable { mutableFloatStateOf(initial.typingCount.toFloat()) }
+    var missionId by rememberSaveable { mutableStateOf(initial.missionId) }
+    var missionDifficulty by rememberSaveable { mutableIntStateOf(initial.missionDifficulty) }
+    var showLibrary by remember { mutableStateOf(false) }
     var showTry by remember { mutableStateOf(false) }
     var sound by rememberSaveable { mutableStateOf(initial.sound) }
     var volume by rememberSaveable { mutableFloatStateOf(initial.volumePercent.toFloat()) }
@@ -140,6 +137,8 @@ fun EditAlarmScreen(initial: Alarm, isNew: Boolean, onSave: (Alarm) -> Unit, onB
 
     // Optional: without it the step task falls back to the accelerometer.
     val activityLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    // Missions mostly scan product barcodes; without the camera only walking/light missions are used.
+    val missionCameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     val canSave = taskType != TaskType.BARCODE || !barcodeValue.isNullOrBlank()
 
@@ -152,12 +151,9 @@ fun EditAlarmScreen(initial: Alarm, isNew: Boolean, onSave: (Alarm) -> Unit, onB
         taskType = taskType,
         barcodeValue = barcodeValue,
         barcodeFormat = barcodeFormat,
-        shakeCount = shakeCount.roundToInt(),
         stepCount = stepCount.roundToInt(),
-        mathCount = mathCount.roundToInt(),
-        mathDifficulty = mathDifficulty,
-        memoryRounds = memoryRounds.roundToInt(),
-        typingCount = typingCount.roundToInt(),
+        missionId = missionId,
+        missionDifficulty = missionDifficulty,
         sound = sound,
         volumePercent = volume.roundToInt(),
         vibrate = vibrate,
@@ -224,14 +220,16 @@ fun EditAlarmScreen(initial: Alarm, isNew: Boolean, onSave: (Alarm) -> Unit, onB
 
             Section("מנגנון הכיבוי וההגנה") {
                 Text(
-                    "המשימה תידרש כדי לכבות את הצלצול — וגם כדי לכבות, לערוך או למחוק את השעון כל עוד הוא דרוך.",
+                    "כל המשימות מחייבות לקום מהמיטה. המשימה תידרש כדי לכבות את הצלצול — וגם כדי לכבות, לערוך או למחוק את השעון כל עוד הוא דרוך.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 TaskTypeGrid(selected = taskType, onSelect = { type ->
                     taskType = type
-                    if (type == TaskType.STEPS && Build.VERSION.SDK_INT >= 29 && !PermissionUtils.hasActivityRecognition(context)) {
+                    if (type != TaskType.BARCODE && Build.VERSION.SDK_INT >= 29 && !PermissionUtils.hasActivityRecognition(context)) {
                         activityLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
+                    } else if (type == TaskType.MISSION && !PermissionUtils.hasCamera(context)) {
+                        missionCameraLauncher.launch(Manifest.permission.CAMERA)
                     }
                 })
                 if (taskType == TaskType.BARCODE) {
@@ -265,9 +263,8 @@ fun EditAlarmScreen(initial: Alarm, isNew: Boolean, onSave: (Alarm) -> Unit, onB
                 }
                 when (taskType) {
                     TaskType.BARCODE -> Unit
-                    TaskType.SHAKE -> AmountSlider("מספר ניעורים נדרש", shakeCount, { shakeCount = it }, 10f..300f, 28)
                     TaskType.STEPS -> {
-                        AmountSlider("מספר צעדים נדרש", stepCount, { stepCount = it }, 10f..500f, 48)
+                        AmountSlider("מספר צעדים נדרש", stepCount, { stepCount = it }, 30f..500f, 46)
                         Text(
                             "הספירה משתמשת בחיישן הצעדים של המכשיר (הרשאת \"פעילות גופנית\"). " +
                                 "בלי ההרשאה נעשה שימוש בחיישן התאוצה. הנתונים לא נשמרים.",
@@ -275,36 +272,13 @@ fun EditAlarmScreen(initial: Alarm, isNew: Boolean, onSave: (Alarm) -> Unit, onB
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    TaskType.MATH -> {
-                        AmountSlider("מספר תרגילים", mathCount, { mathCount = it }, 1f..10f, 8)
-                        Text("רמת קושי", fontWeight = FontWeight.Bold)
-                        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                            MathDifficulty.names.forEachIndexed { i, name ->
-                                SegmentedButton(
-                                    selected = mathDifficulty == i + 1,
-                                    onClick = { mathDifficulty = i + 1 },
-                                    shape = SegmentedButtonDefaults.itemShape(i, MathDifficulty.names.size)
-                                ) { Text(name) }
-                            }
-                        }
-                        Text(
-                            when (mathDifficulty) {
-                                MathDifficulty.EASY -> "לדוגמה: 23 + 41"
-                                MathDifficulty.HARD -> "לדוגמה: 17 × 24 + 63"
-                                else -> "לדוגמה: 27 × 6 + 15"
-                            },
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    TaskType.MEMORY -> {
-                        AmountSlider("מספר סבבים", memoryRounds, { memoryRounds = it }, 1f..6f, 4)
-                        Text(
-                            "בכל סבב הרצף מתארך במשבצת אחת (מתחיל ב־3).",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    TaskType.TYPING -> AmountSlider("מספר משפטים", typingCount, { typingCount = it }, 1f..5f, 3)
+                    TaskType.MISSION -> MissionSettings(
+                        missionId = missionId,
+                        difficulty = missionDifficulty,
+                        onRandom = { missionId = null },
+                        onDifficulty = { missionDifficulty = it },
+                        onOpenLibrary = { showLibrary = true },
+                    )
                 }
                 if (taskType != TaskType.BARCODE || !barcodeValue.isNullOrBlank()) {
                     OutlinedButton(onClick = { showTry = true }, modifier = Modifier.fillMaxWidth()) {
@@ -327,6 +301,13 @@ fun EditAlarmScreen(initial: Alarm, isNew: Boolean, onSave: (Alarm) -> Unit, onB
         }
     }
 
+    if (showLibrary) {
+        MissionLibraryDialog(
+            selectedId = missionId,
+            onSelect = { missionId = it; showLibrary = false },
+            onDismiss = { showLibrary = false }
+        )
+    }
     if (showTry) {
         TryTaskDialog(alarm = draft(), onDismiss = { showTry = false })
     }
@@ -348,7 +329,7 @@ fun EditAlarmScreen(initial: Alarm, isNew: Boolean, onSave: (Alarm) -> Unit, onB
                 Text(
                     "כדי לשמור ברקוד יעד ולסרוק אותו בבוקר, האפליקציה צריכה גישה למצלמה. " +
                         "התמונה מעובדת על המכשיר בלבד ואינה נשמרת או נשלחת. " +
-                        "אפשר גם לבחור במשימת טלטול שלא דורשת מצלמה."
+                        "אפשר גם לבחור במשימת הליכה שלא דורשת מצלמה."
                 )
             },
             confirmButton = {
@@ -514,38 +495,38 @@ private fun AmountSlider(
     Slider(value = value, onValueChange = onChange, valueRange = range, steps = steps)
 }
 
-/** Two-column grid of selectable task cards. */
+/** Selectable task cards. */
 @Composable
 private fun TaskTypeGrid(selected: TaskType, onSelect: (TaskType) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        TaskType.entries.chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { type ->
-                    val isSelected = type == selected
-                    Card(
-                        onClick = { onSelect(type) },
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                            else MaterialTheme.colorScheme.surfaceContainer
-                        ),
-                        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
-                        modifier = Modifier.weight(1f).height(108.dp)
-                    ) {
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Icon(
-                                type.icon(), null,
-                                tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(type.title, fontWeight = FontWeight.Bold)
-                            Text(
-                                type.description,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 2
-                            )
-                        }
+        TaskType.entries.forEach { type ->
+            val isSelected = type == selected
+            Card(
+                onClick = { onSelect(type) },
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.surfaceContainer
+                ),
+                border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        type.icon(), null,
+                        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(type.title, fontWeight = FontWeight.Bold)
+                        Text(
+                            type.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
+                    RadioButton(selected = isSelected, onClick = { onSelect(type) })
                 }
             }
         }

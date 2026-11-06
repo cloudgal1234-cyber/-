@@ -6,6 +6,7 @@
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
     <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
     <uses-feature android:name="android.hardware.sensor.stepdetector" android:required="false" />
+    <uses-feature android:name="android.hardware.sensor.light" android:required="false" />
 
     <!-- Alarm scheduling. USE_EXACT_ALARM is permitted on Google Play for apps whose core
          function is an alarm clock (API 33+). SCHEDULE_EXACT_ALARM covers API 31-32. -->
@@ -23,7 +24,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
-    <!-- Barcode task (processed on-device only) -->
+    <!-- Barcode scanning for missions (processed on-device only) -->
     <uses-permission android:name="android.permission.CAMERA" />
 
     <!-- Steps task: hardware step detector (optional, falls back to the accelerometer) -->
