@@ -1,0 +1,16 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- clock bells -->
+    <path android:fillColor="#FF8A3D" android:pathData="M30,40 L40,30 A6,6 0 0 0 30,28 A10,10 0 0 0 28,38 Z" />
+    <path android:fillColor="#FF8A3D" android:pathData="M78,40 L68,30 A6,6 0 0 1 78,28 A10,10 0 0 1 80,38 Z" />
+    <!-- clock face -->
+    <path android:fillColor="#FFFFFF" android:pathData="M54,32 A24,24 0 1 1 53.99,32 Z" />
+    <path android:fillColor="#0F1729" android:pathData="M54,36 A20,20 0 1 1 53.99,36 Z" />
+    <!-- barcode stripes inside the clock -->
+    <path android:fillColor="#FFFFFF" android:pathData="M42,47h2v16h-2z M46,47h1v16h-1z M49,47h3v16h-3z M54,47h1v16h-1z M57,47h2v16h-2z M61,47h1v16h-1z M64,47h2v16h-2z" />
+    <!-- scan line -->
+    <path android:fillColor="#FF8A3D" android:pathData="M39,54h30v2h-30z" />
+</vector>
