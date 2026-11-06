@@ -5,7 +5,6 @@ import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.PI
-import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.min
 import kotlin.math.sin
@@ -22,7 +21,6 @@ object ToneSynth {
         val file = File(toneDir, "$kind-v1.wav")
         if (file.exists() && file.length() > 44) return file
         val samples = when (kind) {
-            "siren" -> siren()
             "beep" -> beep()
             else -> chime()
         }
@@ -30,21 +28,6 @@ object ToneSynth {
         writeWav(tmp, samples)
         tmp.renameTo(file)
         return file
-    }
-
-    /** Rising/falling siren, 2 s loop. */
-    private fun siren(): FloatArray {
-        val n = RATE * 2
-        val out = FloatArray(n)
-        var phase = 0.0
-        for (i in 0 until n) {
-            val t = i.toDouble() / n               // 0..1
-            val tri = 1 - abs(2 * t - 1)           // 0..1..0
-            val freq = 650 + 650 * tri
-            phase += 2 * PI * freq / RATE
-            out[i] = (0.75 * sin(phase) + 0.25 * sin(2 * phase)).toFloat()
-        }
-        return out
     }
 
     /** Classic digital alarm: four quick beeps, then a pause. */

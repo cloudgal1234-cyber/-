@@ -43,7 +43,9 @@ jobs:
       # On main: publish the test APK as a release with a simple download link.
       - name: Prepare test APK
         if: github.ref == 'refs/heads/main'
-        run: cp app/build/outputs/apk/debug/app-debug.apk TaskAlarm-test.apk
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk TaskAlarm-test.apk
+          cp app/build/outputs/bundle/release/app-release.aab TaskAlarm-release-unsigned.aab
 
       - name: Publish test release
         if: github.ref == 'refs/heads/main'
@@ -57,4 +59,6 @@ jobs:
             גרסת בדיקה להתקנה על הטלפון (לא לגוגל פליי).
             בטלפון: לחצו על TaskAlarm-test.apk למטה, הורידו ופתחו את הקובץ כדי להתקין.
             נבנה מ-commit ${{ github.sha }}
-          files: TaskAlarm-test.apk
+          files: |
+            TaskAlarm-test.apk
+            TaskAlarm-release-unsigned.aab

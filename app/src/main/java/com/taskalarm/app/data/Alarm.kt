@@ -21,7 +21,7 @@ data class Alarm(
     val missionId: String? = null,
     /** Difficulty filter for random missions ([MissionDifficulty]). */
     @ColumnInfo(defaultValue = "0") val missionDifficulty: Int = MissionDifficulty.ANY,
-    val sound: String = SoundIds.SIREN,
+    val sound: String = SoundIds.BEEP,
     /** Percent of the alarm stream's max volume forced while ringing. */
     val volumePercent: Int = 100,
     val vibrate: Boolean = true,
@@ -38,7 +38,8 @@ data class Alarm(
 }
 
 object SoundIds {
-    const val SIREN = "builtin:siren"
+    /** Removed (too stressful); alarms that still have it play [BEEP]. */
+    const val LEGACY_SIREN = "builtin:siren"
     const val BEEP = "builtin:beep"
     const val CHIME = "builtin:chime"
     const val SYSTEM_DEFAULT = "system:default"

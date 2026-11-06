@@ -147,7 +147,7 @@ class AlarmService : Service() {
         targetVolume = ((max * percent) / 100).coerceAtLeast(1)
         if (originalVolume == null) originalVolume = audio.getStreamVolume(AudioManager.STREAM_ALARM)
         runCatching { audio.setStreamVolume(AudioManager.STREAM_ALARM, targetVolume, 0) }
-        player.start(alarm?.sound ?: com.taskalarm.app.data.SoundIds.SIREN)
+        player.start(alarm?.sound ?: com.taskalarm.app.data.SoundIds.BEEP)
         handler.removeCallbacks(volumeGuard)
         handler.postDelayed(volumeGuard, VOLUME_GUARD_MS)
     }

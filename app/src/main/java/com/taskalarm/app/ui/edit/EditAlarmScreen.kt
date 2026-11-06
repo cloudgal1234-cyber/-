@@ -141,7 +141,7 @@ fun EditAlarmScreen(
     var missionDifficulty by rememberSaveable { mutableIntStateOf(initial.missionDifficulty) }
     var showLibrary by remember { mutableStateOf(false) }
     var showTry by remember { mutableStateOf(false) }
-    var sound by rememberSaveable { mutableStateOf(initial.sound) }
+    var sound by rememberSaveable { mutableStateOf(SoundLibrary.normalize(initial.sound)) }
     var volume by rememberSaveable { mutableFloatStateOf(initial.volumePercent.toFloat()) }
     var vibrate by rememberSaveable { mutableStateOf(initial.vibrate) }
 
