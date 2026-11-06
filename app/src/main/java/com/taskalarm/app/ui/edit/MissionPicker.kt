@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -114,7 +113,7 @@ fun MissionLibraryDialog(selectedId: String?, onSelect: (String) -> Unit, onDism
     val missions = remember(query, level) {
         MissionLibrary.all.filter { m ->
             (level == MissionDifficulty.ANY || m.difficulty == level) &&
-                (query.isBlank() || m.title.contains(query.trim()) || m.steps.any { it.description.contains(query.trim()) })
+                (query.isBlank() || query.trim().split(" ").all { word -> m.title.contains(word) || m.steps.any { it.description.contains(word) } })
         }
     }
 
@@ -129,7 +128,7 @@ fun MissionLibraryDialog(selectedId: String?, onSelect: (String) -> Unit, onDism
                     value = query,
                     onValueChange = { query = it },
                     leadingIcon = { Icon(Icons.Filled.Search, null) },
-                    placeholder = { Text("חיפוש: אור, צעדים, סיומת 7…") },
+                    placeholder = { Text("חיפוש: אור, צעדים, קפיצות, סיבובים…") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -172,7 +171,6 @@ private fun MissionRow(mission: Mission, selected: Boolean, onClick: () -> Unit)
         Spacer(Modifier.width(8.dp))
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(MissionDifficulty.name(mission.difficulty), style = MaterialTheme.typography.labelMedium)
-            if (mission.needsCamera) Icon(Icons.Filled.CameraAlt, contentDescription = "דורש מצלמה")
         }
     }
 }

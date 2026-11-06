@@ -44,7 +44,7 @@ import com.taskalarm.app.data.TaskType
 import com.taskalarm.app.ui.permissions.PermissionUtils
 import kotlinx.coroutines.delay
 
-/** Mission swaps allowed per challenge, for rules that no product at home happens to satisfy. */
+/** Mission swaps allowed per challenge (e.g. can't jump right now). */
 private const val MAX_SWAPS = 3
 
 private enum class Mode { BARCODE, STEPS, MISSION, EMERGENCY }
@@ -59,7 +59,6 @@ fun TaskChallenge(
     autoStartCamera: Boolean,
     onSolved: () -> Unit,
 ) {
-    val context = LocalContext.current
     val initial = when (alarm?.taskType) {
         TaskType.BARCODE -> if (alarm?.barcodeValue.isNullOrBlank()) Mode.MISSION else Mode.BARCODE
         TaskType.STEPS -> Mode.STEPS
@@ -76,10 +75,7 @@ fun TaskChallenge(
     val fixedMission = MissionLibrary.get(alarm?.missionId)
     var missionId by rememberSaveable {
         mutableStateOf(
-            fixedMission?.id ?: MissionLibrary.random(
-                difficulty = alarm?.missionDifficulty ?: MissionDifficulty.ANY,
-                cameraAvailable = PermissionUtils.hasCamera(context)
-            ).id
+            fixedMission?.id ?: MissionLibrary.random(difficulty = alarm?.missionDifficulty ?: MissionDifficulty.ANY).id
         )
     }
     var swapsLeft by rememberSaveable { mutableIntStateOf(MAX_SWAPS) }
@@ -94,30 +90,25 @@ fun TaskChallenge(
         // No motion sensor at all: fall back to a mission so the alarm can still be stopped.
         Mode.STEPS -> StepsTask(target = alarm?.stepCount ?: 100, onComplete = solveOnce, onUnavailable = { mode = Mode.MISSION })
         Mode.MISSION -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            val mission = MissionLibrary.get(missionId) ?: MissionLibrary.emergencyNoCamera
+            val mission = MissionLibrary.get(missionId) ?: MissionLibrary.emergency
+            Text(mission.title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(8.dp))
             MissionTask(mission = mission, onComplete = solveOnce)
             if (swapsLeft > 0) {
                 TextButton(onClick = {
                     swapsLeft--
-                    missionId = MissionLibrary.random(
-                        difficulty = mission.difficulty,
-                        cameraAvailable = PermissionUtils.hasCamera(context),
-                        exclude = mission.id
-                    ).id
-                }) { Text("אין לי מוצר מתאים — החלף משימה (נותרו $swapsLeft)") }
+                    missionId = MissionLibrary.random(difficulty = mission.difficulty, exclude = mission.id).id
+                }) { Text("לא מתאים לי עכשיו — החלף משימה (נותרו $swapsLeft)") }
             }
         }
         Mode.EMERGENCY -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                "משימת חירום: גם בלי הברקוד הקבוע צריך לקום.",
+                "משימת חירום: הדלק אור ולך 150 צעדים.",
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(bottom = 12.dp)
             )
-            MissionTask(
-                mission = if (PermissionUtils.hasCamera(context)) MissionLibrary.emergency else MissionLibrary.emergencyNoCamera,
-                onComplete = solveOnce
-            )
+            MissionTask(mission = MissionLibrary.emergency, onComplete = solveOnce)
             TextButton(onClick = { mode = Mode.BARCODE }) { Text("חזרה לסריקת הברקוד הקבוע") }
         }
     }

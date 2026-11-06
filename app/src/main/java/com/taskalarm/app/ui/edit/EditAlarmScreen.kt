@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -91,6 +92,7 @@ import com.taskalarm.app.alarm.SoundLibrary
 import com.taskalarm.app.data.Alarm
 import com.taskalarm.app.data.Days
 import com.taskalarm.app.data.TaskType
+import com.taskalarm.app.ui.AppPrefs
 import com.taskalarm.app.ui.permissions.PermissionUtils
 import com.taskalarm.app.ui.task.BarcodeScannerView
 import com.taskalarm.app.ui.theme.Success
@@ -104,10 +106,20 @@ fun EditAlarmRoute(
     onSave: (Alarm) -> Unit,
     onBack: () -> Unit,
 ) {
+    val context = LocalContext.current
     val initial by produceState<Alarm?>(initialValue = null, alarmId) {
-        value = alarmId?.let { load(it) } ?: Alarm()
+        value = alarmId?.let { load(it) }
+            ?: AppPrefs.lastSound(context)?.let { Alarm(sound = it) }
+            ?: Alarm()
     }
-    initial?.let { EditAlarmScreen(it, isNew = alarmId == null, onSave = onSave, onBack = onBack) }
+    initial?.let {
+        EditAlarmScreen(
+            it,
+            isNew = alarmId == null,
+            onSave = { alarm -> AppPrefs.setLastSound(context, alarm.sound); onSave(alarm) },
+            onBack = onBack
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -137,8 +149,6 @@ fun EditAlarmScreen(initial: Alarm, isNew: Boolean, onSave: (Alarm) -> Unit, onB
 
     // Optional: without it the step task falls back to the accelerometer.
     val activityLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
-    // Missions mostly scan product barcodes; without the camera only walking/light missions are used.
-    val missionCameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     val canSave = taskType != TaskType.BARCODE || !barcodeValue.isNullOrBlank()
 
@@ -228,8 +238,6 @@ fun EditAlarmScreen(initial: Alarm, isNew: Boolean, onSave: (Alarm) -> Unit, onB
                     taskType = type
                     if (type != TaskType.BARCODE && Build.VERSION.SDK_INT >= 29 && !PermissionUtils.hasActivityRecognition(context)) {
                         activityLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
-                    } else if (type == TaskType.MISSION && !PermissionUtils.hasCamera(context)) {
-                        missionCameraLauncher.launch(Manifest.permission.CAMERA)
                     }
                 })
                 if (taskType == TaskType.BARCODE) {
@@ -378,6 +386,18 @@ private fun SoundSection(
         }
     }
 
+    // Any audio file on the phone (mp3, m4a, ogg…). The read permission is persisted so the
+    // alarm service can still open the file at ring time, after reboots.
+    val fileLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            onSound(uri.toString())
+            if (previewing) player.start(uri.toString(), volume / 100f)
+        }
+    }
+
     fun restartPreview(id: String) {
         if (previewing) player.start(id, volume / 100f)
     }
@@ -397,6 +417,14 @@ private fun SoundSection(
                 RadioButton(selected = sound == option.id, onClick = { onSound(option.id); restartPreview(option.id) })
                 Text(option.title)
             }
+        }
+        Button(
+            onClick = { runCatching { fileLauncher.launch(arrayOf("audio/*")) } },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Filled.AudioFile, null)
+            Spacer(Modifier.width(6.dp))
+            Text("בחר קובץ שמע מהטלפון (mp3 וכו')")
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = {

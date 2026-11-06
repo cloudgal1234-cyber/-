@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey
 
 /** How the alarm (and its protection) is defeated. Every task requires getting out of bed. */
 enum class TaskType(val title: String, val description: String) {
-    MISSION("משימות בוקר", "${MissionLibrary.all.size} משימות: ציד ברקודים, אור והליכה"),
+    MISSION("משימות בוקר", "${MissionLibrary.all.size} משימות: אור, הליכה, קפיצות וסיבובים"),
     BARCODE("ברקוד קבוע", "לסרוק מוצר מסוים שבחרת מראש"),
     STEPS("הליכה", "ללכת מספר צעדים עם הטלפון"),
 }

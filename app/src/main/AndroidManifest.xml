@@ -7,6 +7,7 @@
     <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
     <uses-feature android:name="android.hardware.sensor.stepdetector" android:required="false" />
     <uses-feature android:name="android.hardware.sensor.light" android:required="false" />
+    <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false" />
 
     <!-- Alarm scheduling. USE_EXACT_ALARM is permitted on Google Play for apps whose core
          function is an alarm clock (API 33+). SCHEDULE_EXACT_ALARM covers API 31-32. -->
