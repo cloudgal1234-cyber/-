@@ -1,16 +1,16 @@
 package com.taskalarm.app.ui.task
 
+import android.graphics.Bitmap
+import android.graphics.Matrix
+import android.os.SystemClock
 import android.util.Log
-import androidx.annotation.OptIn
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
-import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,34 +33,32 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.google.mlkit.vision.barcode.BarcodeScanner
-import com.google.mlkit.vision.barcode.BarcodeScannerOptions
-import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.label.ImageLabeler
+import com.google.mlkit.vision.label.ImageLabeling
+import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
+import com.taskalarm.app.data.ImageFeatures
 import java.util.concurrent.Executors
 
-data class ScannedCode(val value: String, val format: String)
+/** One analysed camera frame: its features and (optionally) an upright thumbnail. */
+class Frame(val features: ImageFeatures, val thumbnail: Bitmap?)
 
 /**
- * Live camera preview that reports every barcode it recognises.
- * Recognition runs fully on-device with ML Kit's bundled model; no frame leaves the phone.
+ * Live back-camera preview that reports the [ImageFeatures] of about two frames per second.
+ * Everything runs on the device (ML Kit's bundled labeling model); frames are never stored
+ * unless the caller keeps a [Frame.thumbnail].
  */
 @Composable
-fun BarcodeScannerView(modifier: Modifier = Modifier, onDetected: (ScannedCode) -> Unit) {
+fun PhotoCameraView(modifier: Modifier = Modifier, keepThumbnails: Boolean = false, onFrame: (Frame) -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val callback by rememberUpdatedState(onDetected)
+    val callback by rememberUpdatedState(onFrame)
     val previewView = remember {
         PreviewView(context).apply {
             scaleType = PreviewView.ScaleType.FILL_CENTER
@@ -72,15 +70,16 @@ fun BarcodeScannerView(modifier: Modifier = Modifier, onDetected: (ScannedCode) 
     var error by remember { mutableStateOf<String?>(null) }
 
     DisposableEffect(lifecycleOwner) {
-        val analysisExecutor = Executors.newSingleThreadExecutor()
-        val scanner = BarcodeScanning.getClient(
-            BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS).build()
+        val executor = Executors.newSingleThreadExecutor()
+        val labeler = ImageLabeling.getClient(
+            ImageLabelerOptions.Builder().setConfidenceThreshold(0.3f).build()
         )
         val preview = Preview.Builder().build()
         val analysis = ImageAnalysis.Builder()
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
             .build()
-        analysis.setAnalyzer(analysisExecutor, BarcodeAnalyzer(scanner) { callback(it) })
+        analysis.setAnalyzer(executor, FeatureAnalyzer(labeler, keepThumbnails) { callback(it) })
 
         val providerFuture = ProcessCameraProvider.getInstance(context)
         var provider: ProcessCameraProvider? = null
@@ -100,7 +99,7 @@ fun BarcodeScannerView(modifier: Modifier = Modifier, onDetected: (ScannedCode) 
                     camera = p.bindToLifecycle(lifecycleOwner, selector, preview, analysis)
                 }
             } catch (e: Exception) {
-                Log.e("BarcodeScanner", "Camera bind failed", e)
+                Log.e("PhotoCamera", "Camera bind failed", e)
                 error = "לא ניתן להפעיל את המצלמה"
             }
         }, ContextCompat.getMainExecutor(context))
@@ -108,32 +107,14 @@ fun BarcodeScannerView(modifier: Modifier = Modifier, onDetected: (ScannedCode) 
         onDispose {
             runCatching { provider?.unbind(preview, analysis) }
             analysis.clearAnalyzer()
-            analysisExecutor.shutdown()
-            scanner.close()
+            executor.shutdown()
+            labeler.close()
             camera = null
         }
     }
 
     Box(modifier.background(Color.Black)) {
         AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
-        val frameColor = MaterialTheme.colorScheme.primary
-        Canvas(Modifier.fillMaxSize()) {
-            val w = size.width * 0.8f
-            val h = size.height * 0.45f
-            drawRoundRect(
-                color = frameColor,
-                topLeft = Offset((size.width - w) / 2, (size.height - h) / 2),
-                size = Size(w, h),
-                cornerRadius = CornerRadius(32f, 32f),
-                style = Stroke(width = 6f)
-            )
-            drawLine(
-                color = frameColor.copy(alpha = 0.8f),
-                start = Offset((size.width - w) / 2 + 24f, size.height / 2),
-                end = Offset((size.width + w) / 2 - 24f, size.height / 2),
-                strokeWidth = 4f
-            )
-        }
         if (camera?.cameraInfo?.hasFlashUnit() == true) {
             FilledIconButton(
                 onClick = {
@@ -153,49 +134,53 @@ fun BarcodeScannerView(modifier: Modifier = Modifier, onDetected: (ScannedCode) 
         }
         error?.let {
             Text(
-                it,
-                color = Color.White,
-                modifier = Modifier.align(Alignment.Center).padding(24.dp),
-                style = MaterialTheme.typography.titleMedium
+                it, color = Color.White, style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.align(Alignment.Center).padding(24.dp)
             )
         }
     }
 }
 
-private class BarcodeAnalyzer(
-    private val scanner: BarcodeScanner,
-    private val onDetected: (ScannedCode) -> Unit,
+private class FeatureAnalyzer(
+    private val labeler: ImageLabeler,
+    private val keepThumbnails: Boolean,
+    private val onFrame: (Frame) -> Unit,
 ) : ImageAnalysis.Analyzer {
-    @OptIn(ExperimentalGetImage::class)
+    private var last = 0L
+    @Volatile private var busy = false
+
     override fun analyze(proxy: ImageProxy) {
-        val media = proxy.image
-        if (media == null) {
+        val now = SystemClock.elapsedRealtime()
+        if (busy || now - last < 450) {
             proxy.close(); return
         }
-        val input = InputImage.fromMediaImage(media, proxy.imageInfo.rotationDegrees)
-        scanner.process(input)
-            .addOnSuccessListener { codes -> // delivered on the main thread
-                codes.firstOrNull { !it.rawValue.isNullOrBlank() }?.let {
-                    onDetected(ScannedCode(it.rawValue!!.trim(), formatName(it.format)))
-                }
-            }
-            .addOnCompleteListener { proxy.close() }
-    }
-}
+        last = now
+        val rotation = proxy.imageInfo.rotationDegrees
+        val raw = try {
+            proxy.toBitmap()
+        } catch (e: Exception) {
+            proxy.close(); return
+        }
+        proxy.close()
 
-fun formatName(format: Int): String = when (format) {
-    Barcode.FORMAT_EAN_13 -> "EAN-13"
-    Barcode.FORMAT_EAN_8 -> "EAN-8"
-    Barcode.FORMAT_UPC_A -> "UPC-A"
-    Barcode.FORMAT_UPC_E -> "UPC-E"
-    Barcode.FORMAT_CODE_128 -> "Code 128"
-    Barcode.FORMAT_CODE_39 -> "Code 39"
-    Barcode.FORMAT_CODE_93 -> "Code 93"
-    Barcode.FORMAT_CODABAR -> "Codabar"
-    Barcode.FORMAT_ITF -> "ITF"
-    Barcode.FORMAT_QR_CODE -> "QR"
-    Barcode.FORMAT_DATA_MATRIX -> "Data Matrix"
-    Barcode.FORMAT_PDF417 -> "PDF417"
-    Barcode.FORMAT_AZTEC -> "Aztec"
-    else -> "ברקוד"
+        val upright = if (rotation != 0) {
+            Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, Matrix().apply { postRotate(rotation.toFloat()) }, true)
+        } else raw
+
+        // Centre 80 % of the frame, downscaled: where the user aims the object.
+        val side = (minOf(upright.width, upright.height) * 0.8f).toInt()
+        val crop = Bitmap.createBitmap(upright, (upright.width - side) / 2, (upright.height - side) / 2, side, side)
+        val small = Bitmap.createScaledBitmap(crop, 48, 48, true)
+        val pixels = IntArray(48 * 48).also { small.getPixels(it, 0, 48, 0, 0, 48, 48) }
+        val hist = ImageFeatures.histogram(pixels, 48, 48)
+        val thumb = if (keepThumbnails) Bitmap.createScaledBitmap(crop, 480, 480, true) else null
+
+        busy = true
+        labeler.process(InputImage.fromBitmap(crop, 0))
+            .addOnSuccessListener { labels ->
+                onFrame(Frame(ImageFeatures(labels.associate { it.text to it.confidence }, hist), thumb))
+            }
+            .addOnFailureListener { onFrame(Frame(ImageFeatures(emptyMap(), hist), thumb)) }
+            .addOnCompleteListener { busy = false }
+    }
 }

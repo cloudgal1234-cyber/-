@@ -28,7 +28,7 @@ object PermissionUtils {
 
     /** Everything an alarm needs to ring reliably. */
     fun criticalMissing(context: Context): Boolean =
-        !hasNotifications(context) || !hasExactAlarms(context) || !hasFullScreen(context)
+        !hasNotifications(context) || !hasExactAlarms(context) || !hasFullScreen(context) || !hasCamera(context)
 
     fun exactAlarmSettingsIntent(context: Context): Intent =
         if (Build.VERSION.SDK_INT >= 31) {

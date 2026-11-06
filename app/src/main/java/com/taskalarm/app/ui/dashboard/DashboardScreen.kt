@@ -54,7 +54,10 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import com.taskalarm.app.data.Alarm
 import com.taskalarm.app.data.Days
 import com.taskalarm.app.data.NextAlarmCalculator
-import com.taskalarm.app.ui.task.icon
+import com.taskalarm.app.data.PlaceRepository
+import androidx.compose.runtime.collectAsState
+import androidx.compose.material.icons.filled.AddAPhoto
+import androidx.compose.material.icons.filled.CameraAlt
 import com.taskalarm.app.ui.formatCountdown
 import com.taskalarm.app.ui.formatDate
 import com.taskalarm.app.ui.formatTime
@@ -71,6 +74,7 @@ fun DashboardScreen(
     onToggle: (Alarm, Boolean) -> Unit,
     onDelete: (Alarm) -> Unit,
     onFixPermissions: () -> Unit,
+    onPlaces: () -> Unit,
 ) {
     val context = LocalContext.current
     var now by remember { mutableStateOf(ZonedDateTime.now()) }
@@ -84,6 +88,7 @@ fun DashboardScreen(
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         permissionsMissing = PermissionUtils.criticalMissing(context)
     }
+    val placeCount by remember { PlaceRepository(context).places }.collectAsState(initial = null)
     var confirmDelete by remember { mutableStateOf<Alarm?>(null) }
     var showAbout by remember { mutableStateOf(false) }
 
@@ -110,11 +115,17 @@ fun DashboardScreen(
                     IconButton(onClick = { showAbout = true }, modifier = Modifier.align(Alignment.TopStart)) {
                         Icon(Icons.Filled.Info, contentDescription = "אודות ופרטיות")
                     }
+                    IconButton(onClick = onPlaces, modifier = Modifier.align(Alignment.TopEnd)) {
+                        Icon(Icons.Filled.AddAPhoto, contentDescription = "המקומות שלי")
+                    }
                     ClockHeader(now, alarms)
                 }
             }
             if (permissionsMissing) {
                 item { PermissionWarning(onFixPermissions) }
+            }
+            if (placeCount?.isEmpty() == true) {
+                item { PlacesHint(onPlaces) }
             }
             when {
                 alarms == null -> Unit
@@ -198,6 +209,28 @@ private fun PermissionWarning(onFix: () -> Unit) {
 }
 
 @Composable
+private fun PlacesHint(onPlaces: () -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onPlaces)
+    ) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.AddAPhoto, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("שלב ראשון: צלם מקומות בבית", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text(
+                    "המקרר, מתג האור, הכיור… בבוקר תצטרך לקום ולצלם אותם כדי לכבות את השעון.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+            TextButton(onClick = onPlaces) { Text("צלם") }
+        }
+    }
+}
+
+@Composable
 private fun EmptyState() {
     Column(
         Modifier.fillMaxWidth().padding(vertical = 48.dp),
@@ -207,7 +240,7 @@ private fun EmptyState() {
         Spacer(Modifier.height(12.dp))
         Text("עדיין אין שעונים מעוררים", style = MaterialTheme.typography.titleLarge)
         Text(
-            "צור שעון ראשון. בבוקר תצטרך לקום: להדליק אור, ללכת, לקפוץ ולהסתובב — מתוך ספרייה של מאות משימות.",
+            "צלם כמה מקומות בבית (מקרר, מתג אור, כיור…) וצור שעון. בבוקר תצטרך לקום ולצלם אחד מהם.",
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
@@ -255,7 +288,7 @@ private fun AlarmCard(
                         Text(alarm.taskSummary)
                     },
                     leadingIcon = {
-                        Icon(alarm.taskType.icon(), null, Modifier.size(AssistChipDefaults.IconSize))
+                        Icon(Icons.Filled.CameraAlt, null, Modifier.size(AssistChipDefaults.IconSize))
                     }
                 )
             }
@@ -276,13 +309,14 @@ private fun AboutDialog(onDismiss: () -> Unit) {
         title = { Text("אודות ופרטיות") },
         text = {
             Text(
-                "מעורר משימה הוא שעון מעורר שנכבה רק אחרי שקמת מהמיטה: ${com.taskalarm.app.data.MissionLibrary.all.size} משימות בוקר: הדלקת אור, הליכה, קפיצות וסיבובים במקום.\n\n" +
+                "מעורר משימה הוא שעון מעורר שנכבה רק אחרי שקמת מהמיטה וצילמת מקום בבית — למשל את המקרר או את מתג האור. " +
+                    "${com.taskalarm.app.data.PhotoCatalog.missions.size} משימות צילום.\n\n" +
                     "• שעון דרוך מוגן: כיבוי, עריכה או מחיקה שלו דורשים לבצע את המשימה.\n" +
-                    "• המצלמה משמשת רק לסריקת הברקוד הקבוע (אם בחרת בו); העיבוד מתבצע על המכשיר ושום תמונה לא נשמרת או נשלחת.\n" +
-                    "• חיישני האור, התנועה, הסיבוב והצעדים משמשים רק בזמן המשימה ולא נשמרים.\n" +
+                    "• המצלמה משמשת להשוואת מה שאתה מצלם לתמונות המקומות ששמרת. העיבוד מתבצע על המכשיר, ותמונות המקומות נשמרות רק בטלפון ולא נשלחות לשום מקום.\n" +
+                    "• חיישני האור והצעדים משמשים רק במשימת החירום ולא נשמרים.\n" +
                     "• כל הנתונים נשמרים מקומית בלבד. לאפליקציה אין הרשאת אינטרנט.\n" +
-                    "• כל המשימות מחייבות לקום מהמיטה. אפשר להחליף משימה עד 3 פעמים, " +
-                    "ואם המוצר עם הברקוד הקבוע אבד — יש משימת חירום (אור ו־150 צעדים)."
+                    "• אם הזיהוי לא מצליח אפשר להחליף משימה עד 3 פעמים, ואחר כך יש משימת חירום (אור ו־150 צעדים) — " +
+                    "כך שתמיד אפשר לכבות, אבל רק אחרי שקמת."
             )
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("הבנתי") } }

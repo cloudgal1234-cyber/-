@@ -102,13 +102,13 @@ dependencies {
     implementation("androidx.room:room-ktx:2.7.2")
     ksp("androidx.room:room-compiler:2.7.2")
 
-    // Camera + on-device barcode recognition (bundled model, works offline)
+    // Camera + on-device image labeling (bundled model, works offline)
     val camerax = "1.4.2"
     implementation("androidx.camera:camera-core:$camerax")
     implementation("androidx.camera:camera-camera2:$camerax")
     implementation("androidx.camera:camera-lifecycle:$camerax")
     implementation("androidx.camera:camera-view:$camerax")
-    implementation("com.google.mlkit:barcode-scanning:17.3.0")
+    implementation("com.google.mlkit:image-labeling:17.0.9")
 
     testImplementation("junit:junit:4.13.2")
 }

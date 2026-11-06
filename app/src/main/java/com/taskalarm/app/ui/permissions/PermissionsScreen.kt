@@ -111,8 +111,8 @@ fun PermissionsScreen(onContinue: () -> Unit) {
         )
         PermissionCard(
             icon = Icons.Filled.CameraAlt,
-            title = "מצלמה (לא חובה)",
-            reason = "נדרשת רק אם תבחר במשימת \"ברקוד קבוע\". התמונה מעובדת על המכשיר בלבד, לא נשמרת ולא נשלחת.",
+            title = "מצלמה",
+            reason = "המשימה בבוקר היא לקום ולצלם מקום בבית. ההשוואה לתמונה ששמרת מתבצעת על המכשיר בלבד, ושום תמונה לא נשלחת.",
             granted = camera,
             onGrant = { cameraLauncher.launch(Manifest.permission.CAMERA) }
         )
@@ -120,7 +120,7 @@ fun PermissionsScreen(onContinue: () -> Unit) {
             PermissionCard(
                 icon = Icons.AutoMirrored.Filled.DirectionsWalk,
                 title = "פעילות גופנית (לא חובה)",
-                reason = "מומלץ: מאפשרת ספירת צעדים מדויקת במשימות הליכה. בלעדיה הספירה נעשית עם חיישן התאוצה. שום נתון לא נשמר.",
+                reason = "משמשת רק במשימת החירום (הליכה) לספירת צעדים מדויקת. שום נתון לא נשמר.",
                 granted = activity,
                 onGrant = { activityLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION) }
             )

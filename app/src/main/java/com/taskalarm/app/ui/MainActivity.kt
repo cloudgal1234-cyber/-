@@ -24,6 +24,7 @@ import com.taskalarm.app.ui.challenge.ProtectedAction
 import com.taskalarm.app.ui.dashboard.DashboardScreen
 import com.taskalarm.app.ui.edit.EditAlarmRoute
 import com.taskalarm.app.ui.permissions.PermissionsScreen
+import com.taskalarm.app.ui.places.PlacesScreen
 import com.taskalarm.app.ui.ringing.AlarmActivity
 import com.taskalarm.app.ui.theme.TaskAlarmTheme
 
@@ -50,6 +51,7 @@ class MainActivity : ComponentActivity() {
 private object Routes {
     const val PERMISSIONS = "permissions"
     const val DASHBOARD = "dashboard"
+    const val PLACES = "places"
     const val EDIT = "edit/{id}"
     const val CHALLENGE = "challenge/{id}/{action}"
     fun edit(id: Long?) = "edit/${id ?: -1}"
@@ -91,6 +93,7 @@ private fun AppNavHost(vm: AlarmViewModel = viewModel()) {
                     else vm.delete(alarm)
                 },
                 onFixPermissions = { nav.navigate(Routes.PERMISSIONS) },
+                onPlaces = { nav.navigate(Routes.PLACES) },
             )
         }
         composable(Routes.EDIT, arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
@@ -100,7 +103,11 @@ private fun AppNavHost(vm: AlarmViewModel = viewModel()) {
                 load = vm::load,
                 onSave = { alarm -> vm.save(alarm) { nav.popBackStack(Routes.DASHBOARD, inclusive = false) } },
                 onBack = { nav.popBackStack() },
+                onManagePlaces = { nav.navigate(Routes.PLACES) },
             )
+        }
+        composable(Routes.PLACES) {
+            PlacesScreen(onBack = { nav.popBackStack() })
         }
         composable(
             Routes.CHALLENGE,

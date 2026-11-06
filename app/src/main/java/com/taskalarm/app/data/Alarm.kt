@@ -4,12 +4,8 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-/** How the alarm (and its protection) is defeated. Every task requires getting out of bed. */
-enum class TaskType(val title: String, val description: String) {
-    MISSION("משימות בוקר", "${MissionLibrary.all.size} משימות: אור, הליכה, קפיצות וסיבובים"),
-    BARCODE("ברקוד קבוע", "לסרוק מוצר מסוים שבחרת מראש"),
-    STEPS("הליכה", "ללכת מספר צעדים עם הטלפון"),
-}
+/** How the alarm (and its protection) is defeated: get up and photograph places in the home. */
+enum class TaskType { PHOTO }
 
 @Entity(tableName = "alarms")
 data class Alarm(
@@ -20,11 +16,8 @@ data class Alarm(
     val daysMask: Int = 0,
     val label: String = "",
     val enabled: Boolean = true,
-    val taskType: TaskType = TaskType.MISSION,
-    val barcodeValue: String? = null,
-    val barcodeFormat: String? = null,
-    @ColumnInfo(defaultValue = "100") val stepCount: Int = 100,
-    /** Fixed mission from [MissionLibrary]; null = a random mission every time. */
+    val taskType: TaskType = TaskType.PHOTO,
+    /** Fixed mission from [PhotoCatalog]; null = a random mission every time. */
     val missionId: String? = null,
     /** Difficulty filter for random missions ([MissionDifficulty]). */
     @ColumnInfo(defaultValue = "0") val missionDifficulty: Int = MissionDifficulty.ANY,
@@ -40,12 +33,8 @@ data class Alarm(
 
     /** Short Hebrew description of the task. */
     val taskSummary: String
-        get() = when (taskType) {
-            TaskType.BARCODE -> "ברקוד קבוע"
-            TaskType.STEPS -> "$stepCount צעדים"
-            TaskType.MISSION -> MissionLibrary.get(missionId)?.title
-                ?: "משימה אקראית" + if (missionDifficulty != MissionDifficulty.ANY) " (${MissionDifficulty.name(missionDifficulty)})" else ""
-        }
+        get() = PhotoCatalog.mission(missionId)?.title
+            ?: ("צילום אקראי" + if (missionDifficulty != MissionDifficulty.ANY) " (${MissionDifficulty.name(missionDifficulty)})" else "")
 }
 
 object SoundIds {

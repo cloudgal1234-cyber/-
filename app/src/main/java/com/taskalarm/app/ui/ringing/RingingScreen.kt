@@ -109,7 +109,6 @@ fun RingingScreen(alarmId: Long, onSolved: () -> Unit, onClose: () -> Unit) {
             Column(Modifier.fillMaxWidth()) {
                 TaskChallenge(
                     alarm = ready.alarm,
-                    autoStartCamera = false,
                     onSolved = {
                         solved = true
                         onSolved()

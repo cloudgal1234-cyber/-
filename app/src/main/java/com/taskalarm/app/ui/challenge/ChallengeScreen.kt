@@ -79,7 +79,7 @@ fun ChallengeScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Column(Modifier.fillMaxWidth()) {
-                TaskChallenge(alarm = a, autoStartCamera = false, onSolved = { onAuthorized(a) })
+                TaskChallenge(alarm = a, onSolved = { onAuthorized(a) })
             }
         }
     }

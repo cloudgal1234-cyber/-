@@ -39,9 +39,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.taskalarm.app.data.Mission
 import com.taskalarm.app.data.MissionDifficulty
-import com.taskalarm.app.data.MissionLibrary
+import com.taskalarm.app.data.PhotoCatalog
+import com.taskalarm.app.data.PhotoMission
 
 private val levels = listOf(MissionDifficulty.ANY, MissionDifficulty.EASY, MissionDifficulty.MEDIUM, MissionDifficulty.HARD)
 
@@ -50,11 +50,13 @@ private val levels = listOf(MissionDifficulty.ANY, MissionDifficulty.EASY, Missi
 fun MissionSettings(
     missionId: String?,
     difficulty: Int,
+    registered: Set<String>,
     onRandom: () -> Unit,
     onDifficulty: (Int) -> Unit,
     onOpenLibrary: () -> Unit,
 ) {
-    val fixed = MissionLibrary.get(missionId)
+    val fixed = PhotoCatalog.mission(missionId)
+    val eligible = remember(registered) { PhotoCatalog.eligible(registered) }
     Row(
         Modifier.fillMaxWidth().selectable(selected = fixed == null, onClick = onRandom),
         verticalAlignment = Alignment.CenterVertically
@@ -63,7 +65,7 @@ fun MissionSettings(
         Column {
             Text("משימה אקראית בכל בוקר", fontWeight = FontWeight.Bold)
             Text(
-                "אי אפשר להתכונן מראש — לא יודעים מה מחכה עד שהשעון מצלצל.",
+                "לא יודעים מה מחכה עד שהשעון מצלצל. כרגע ${eligible.size} משימות זמינות מהמקומות שצילמת.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -73,7 +75,7 @@ fun MissionSettings(
         Text("רמת קושי", fontWeight = FontWeight.Bold)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             levels.forEach { level ->
-                val count = MissionLibrary.all.count { level == MissionDifficulty.ANY || it.difficulty == level }
+                val count = eligible.count { level == MissionDifficulty.ANY || it.difficulty == level }
                 FilterChip(
                     selected = difficulty == level,
                     onClick = { onDifficulty(level) },
@@ -81,6 +83,7 @@ fun MissionSettings(
                 )
             }
         }
+        Text(MissionDifficulty.explain(difficulty), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     Row(
         Modifier.fillMaxWidth().selectable(selected = fixed != null, onClick = onOpenLibrary),
@@ -90,30 +93,35 @@ fun MissionSettings(
         Column(Modifier.weight(1f)) {
             Text("משימה קבועה מהספרייה", fontWeight = FontWeight.Bold)
             Text(
-                fixed?.let { "${it.title} · ${MissionDifficulty.name(it.difficulty)}" } ?: "בחר אחת מתוך ${MissionLibrary.all.size} משימות",
+                fixed?.let { "${it.title} · ${MissionDifficulty.name(it.difficulty)}" }
+                    ?: "בחר מתוך ${PhotoCatalog.missions.size} משימות",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
     if (fixed != null) {
-        fixed.steps.forEachIndexed { i, step ->
-            Text("${i + 1}. ${step.description}", style = MaterialTheme.typography.bodyMedium)
-        }
         OutlinedButton(onClick = onOpenLibrary, modifier = Modifier.fillMaxWidth()) { Text("החלף משימה") }
     }
 }
 
-/** Browse / search all missions in the library. */
+/** Browse / search all photo missions. Missions with places not yet photographed are greyed out. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun MissionLibraryDialog(selectedId: String?, onSelect: (String) -> Unit, onDismiss: () -> Unit) {
+fun MissionLibraryDialog(
+    selectedId: String?,
+    registered: Set<String>,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
     var query by remember { mutableStateOf("") }
     var level by remember { mutableIntStateOf(MissionDifficulty.ANY) }
-    val missions = remember(query, level) {
-        MissionLibrary.all.filter { m ->
+    var onlyAvailable by remember { mutableStateOf(true) }
+    val missions = remember(query, level, onlyAvailable, registered) {
+        PhotoCatalog.missions.filter { m ->
             (level == MissionDifficulty.ANY || m.difficulty == level) &&
-                (query.isBlank() || query.trim().split(" ").all { word -> m.title.contains(word) || m.steps.any { it.description.contains(word) } })
+                (!onlyAvailable || m.objects.all { it.key in registered }) &&
+                (query.isBlank() || query.trim().split(" ").all { word -> m.title.contains(word) })
         }
     }
 
@@ -123,12 +131,12 @@ fun MissionLibraryDialog(selectedId: String?, onSelect: (String) -> Unit, onDism
             modifier = Modifier.fillMaxWidth(0.95f).fillMaxHeight(0.9f)
         ) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("ספריית המשימות", style = MaterialTheme.typography.titleLarge)
+                Text("ספריית המשימות (${PhotoCatalog.missions.size})", style = MaterialTheme.typography.titleLarge)
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
                     leadingIcon = { Icon(Icons.Filled.Search, null) },
-                    placeholder = { Text("חיפוש: אור, צעדים, קפיצות, סיבובים…") },
+                    placeholder = { Text("חיפוש: מקרר, מתג, כיור…") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -136,11 +144,17 @@ fun MissionLibraryDialog(selectedId: String?, onSelect: (String) -> Unit, onDism
                     levels.forEach {
                         FilterChip(selected = level == it, onClick = { level = it }, label = { Text(MissionDifficulty.name(it)) })
                     }
+                    FilterChip(selected = onlyAvailable, onClick = { onlyAvailable = !onlyAvailable }, label = { Text("רק זמינות") })
                 }
                 Text("${missions.size} משימות", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 LazyColumn(Modifier.weight(1f)) {
                     items(missions, key = { it.id }) { mission ->
-                        MissionRow(mission, selected = mission.id == selectedId) { onSelect(mission.id) }
+                        val missing = mission.objects.filter { it.key !in registered }
+                        MissionRow(
+                            mission,
+                            selected = mission.id == selectedId,
+                            missing = missing.joinToString(", ") { it.name },
+                        ) { if (missing.isEmpty()) onSelect(mission.id) }
                         HorizontalDivider()
                     }
                 }
@@ -151,26 +165,29 @@ fun MissionLibraryDialog(selectedId: String?, onSelect: (String) -> Unit, onDism
 }
 
 @Composable
-private fun MissionRow(mission: Mission, selected: Boolean, onClick: () -> Unit) {
+private fun MissionRow(mission: PhotoMission, selected: Boolean, missing: String, onClick: () -> Unit) {
+    val available = missing.isEmpty()
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(enabled = available, onClick = onClick)
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        RadioButton(selected = selected, onClick = onClick)
+        RadioButton(selected = selected, onClick = onClick, enabled = available)
         Column(Modifier.weight(1f)) {
-            Text(mission.title, fontWeight = FontWeight.Bold)
             Text(
-                mission.steps.joinToString(" ← ") { it.description },
+                mission.title,
+                fontWeight = FontWeight.Bold,
+                color = if (available) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                if (available) MissionDifficulty.explain(mission.difficulty) else "צריך לצלם קודם: $missing",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Spacer(Modifier.width(8.dp))
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(MissionDifficulty.name(mission.difficulty), style = MaterialTheme.typography.labelMedium)
-        }
+        Text(MissionDifficulty.name(mission.difficulty), style = MaterialTheme.typography.labelMedium)
     }
 }
