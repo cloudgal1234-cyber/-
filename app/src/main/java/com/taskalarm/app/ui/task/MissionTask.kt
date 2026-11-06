@@ -64,7 +64,11 @@ fun MissionTask(mission: Mission, onComplete: () -> Unit) {
     val done by rememberUpdatedState(onComplete)
     val total = mission.steps.size
     val next: () -> Unit = {
-        if (stepIndex + 1 >= total) done() else stepIndex += 1
+        if (stepIndex + 1 >= total) {
+            done()
+        } else {
+            stepIndex += 1
+        }
     }
 
     Column(
