@@ -2,9 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Hardware: camera is optional (shake task works without it) -->
+    <!-- Hardware: camera is optional (other tasks work without it) -->
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
     <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
+    <uses-feature android:name="android.hardware.sensor.stepdetector" android:required="false" />
 
     <!-- Alarm scheduling. USE_EXACT_ALARM is permitted on Google Play for apps whose core
          function is an alarm clock (API 33+). SCHEDULE_EXACT_ALARM covers API 31-32. -->
@@ -24,6 +25,9 @@
 
     <!-- Barcode task (processed on-device only) -->
     <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Steps task: hardware step detector (optional, falls back to the accelerometer) -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 
     <application
         android:name=".TaskAlarmApp"

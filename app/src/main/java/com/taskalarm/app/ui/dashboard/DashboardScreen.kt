@@ -22,8 +22,6 @@ import androidx.compose.material.icons.filled.AlarmAdd
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.QrCode2
-import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -56,7 +54,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import com.taskalarm.app.data.Alarm
 import com.taskalarm.app.data.Days
 import com.taskalarm.app.data.NextAlarmCalculator
-import com.taskalarm.app.data.TaskType
+import com.taskalarm.app.ui.task.icon
 import com.taskalarm.app.ui.formatCountdown
 import com.taskalarm.app.ui.formatDate
 import com.taskalarm.app.ui.formatTime
@@ -209,7 +207,7 @@ private fun EmptyState() {
         Spacer(Modifier.height(12.dp))
         Text("עדיין אין שעונים מעוררים", style = MaterialTheme.typography.titleLarge)
         Text(
-            "צור שעון ראשון ובחר משימה פיזית — למשל סריקת הברקוד של קופסת החלב במקרר.",
+            "צור שעון ראשון ובחר משימה: סריקת ברקוד של מוצר במטבח, צעדים, טלטול, תרגילי חשבון, משחק זיכרון או הקלדת משפט.",
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
@@ -254,15 +252,10 @@ private fun AlarmCard(
                 AssistChip(
                     onClick = onClick,
                     label = {
-                        Text(
-                            if (alarm.taskType == TaskType.BARCODE) "סריקת ברקוד" else "${alarm.shakeCount} ניעורים"
-                        )
+                        Text(alarm.taskSummary)
                     },
                     leadingIcon = {
-                        Icon(
-                            if (alarm.taskType == TaskType.BARCODE) Icons.Filled.QrCode2 else Icons.Filled.Vibration,
-                            null, Modifier.size(AssistChipDefaults.IconSize)
-                        )
+                        Icon(alarm.taskType.icon(), null, Modifier.size(AssistChipDefaults.IconSize))
                     }
                 )
             }
@@ -283,9 +276,10 @@ private fun AboutDialog(onDismiss: () -> Unit) {
         title = { Text("אודות ופרטיות") },
         text = {
             Text(
-                "מעורר משימה הוא שעון מעורר שנכבה רק אחרי משימה פיזית.\n\n" +
+                "מעורר משימה הוא שעון מעורר שנכבה רק אחרי משימה: ברקוד, צעדים, טלטול, חשבון, זיכרון או הקלדה.\n\n" +
                     "• שעון דרוך מוגן: כיבוי, עריכה או מחיקה שלו דורשים לבצע את המשימה.\n" +
                     "• המצלמה משמשת רק לסריקת ברקוד; העיבוד מתבצע על המכשיר ושום תמונה לא נשמרת או נשלחת.\n" +
+                    "• חיישני התנועה והצעדים משמשים רק לספירה בזמן המשימה ולא נשמרים.\n" +
                     "• כל הנתונים נשמרים מקומית בלבד. לאפליקציה אין הרשאת אינטרנט.\n" +
                     "• איבדת את המוצר עם הברקוד? תמיד קיימת משימת חירום של $EMERGENCY_TEXT ניעורים."
             )

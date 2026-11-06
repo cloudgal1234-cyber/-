@@ -20,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Fullscreen
@@ -59,12 +60,14 @@ fun PermissionsScreen(onContinue: () -> Unit) {
         if (!it) PermissionUtils.open(context, PermissionUtils.notificationSettingsIntent(context))
     }
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { refresh++ }
+    val activityLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { refresh++ }
 
     // Recomputed whenever we come back from a dialog or the system settings.
     val notifications = remember(refresh) { PermissionUtils.hasNotifications(context) }
     val exact = remember(refresh) { PermissionUtils.hasExactAlarms(context) }
     val fullScreen = remember(refresh) { PermissionUtils.hasFullScreen(context) }
     val camera = remember(refresh) { PermissionUtils.hasCamera(context) }
+    val activity = remember(refresh) { PermissionUtils.hasActivityRecognition(context) }
 
     Column(
         Modifier
@@ -113,6 +116,15 @@ fun PermissionsScreen(onContinue: () -> Unit) {
             granted = camera,
             onGrant = { cameraLauncher.launch(Manifest.permission.CAMERA) }
         )
+        if (Build.VERSION.SDK_INT >= 29) {
+            PermissionCard(
+                icon = Icons.AutoMirrored.Filled.DirectionsWalk,
+                title = "פעילות גופנית (לא חובה)",
+                reason = "משמשת רק לספירת צעדים במשימת הצעדים. בלעדיה הספירה נעשית עם חיישן התאוצה. שום נתון לא נשמר.",
+                granted = activity,
+                onGrant = { activityLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION) }
+            )
+        }
 
         Spacer(Modifier.height(8.dp))
         Button(

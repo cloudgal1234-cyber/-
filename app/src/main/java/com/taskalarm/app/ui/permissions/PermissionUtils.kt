@@ -16,6 +16,10 @@ object PermissionUtils {
     fun hasCamera(context: Context) =
         ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
 
+    /** Step detector access (Android 10+). Optional: the steps task falls back to the accelerometer. */
+    fun hasActivityRecognition(context: Context) = Build.VERSION.SDK_INT < 29 ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED
+
     fun hasNotifications(context: Context) = NotificationManagerCompat.from(context).areNotificationsEnabled()
 
     fun hasExactAlarms(context: Context) = AlarmScheduler.canScheduleExact(context)

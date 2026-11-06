@@ -38,6 +38,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.taskalarm.app.data.Alarm
+import com.taskalarm.app.data.MathDifficulty
 import com.taskalarm.app.data.TaskType
 import com.taskalarm.app.ui.permissions.PermissionUtils
 import kotlinx.coroutines.delay
@@ -48,10 +49,10 @@ const val EMERGENCY_SHAKES = 150
 /** Default task when the alarm record is missing. */
 private const val FALLBACK_SHAKES = 30
 
-private enum class Mode { BARCODE, SHAKE, EMERGENCY }
+private enum class Mode { BARCODE, SHAKE, STEPS, MATH, MEMORY, TYPING, EMERGENCY }
 
 /**
- * The physical task that must be completed — used both to stop a ringing alarm and to
+ * The task that must be completed — used both to stop a ringing alarm and to
  * authorise disabling / editing / deleting an armed alarm.
  */
 @Composable
@@ -60,10 +61,14 @@ fun TaskChallenge(
     autoStartCamera: Boolean,
     onSolved: () -> Unit,
 ) {
-    val initial = when {
-        alarm == null -> Mode.SHAKE
-        alarm.taskType == TaskType.BARCODE && !alarm.barcodeValue.isNullOrBlank() -> Mode.BARCODE
-        else -> Mode.SHAKE
+    val initial = when (alarm?.taskType) {
+        null -> Mode.SHAKE
+        TaskType.BARCODE -> if (alarm?.barcodeValue.isNullOrBlank()) Mode.SHAKE else Mode.BARCODE
+        TaskType.SHAKE -> Mode.SHAKE
+        TaskType.STEPS -> Mode.STEPS
+        TaskType.MATH -> Mode.MATH
+        TaskType.MEMORY -> Mode.MEMORY
+        TaskType.TYPING -> Mode.TYPING
     }
     var mode by rememberSaveable { mutableStateOf(initial) }
     var solved by remember { mutableStateOf(false) }
@@ -82,6 +87,15 @@ fun TaskChallenge(
             onEmergency = { mode = Mode.EMERGENCY }
         )
         Mode.SHAKE -> ShakeTask(target = alarm?.shakeCount ?: FALLBACK_SHAKES, onComplete = solveOnce)
+        // No motion sensor at all: fall back to math so the alarm can still be stopped.
+        Mode.STEPS -> StepsTask(target = alarm!!.stepCount, onComplete = solveOnce, onUnavailable = { mode = Mode.MATH })
+        Mode.MATH -> MathTask(
+            count = alarm?.mathCount ?: 3,
+            difficulty = alarm?.mathDifficulty ?: MathDifficulty.MEDIUM,
+            onComplete = solveOnce
+        )
+        Mode.MEMORY -> MemoryTask(rounds = alarm!!.memoryRounds, onComplete = solveOnce)
+        Mode.TYPING -> TypingTask(count = alarm!!.typingCount, onComplete = solveOnce)
         Mode.EMERGENCY -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 "משימת חירום: אין גישה לברקוד? נער את הטלפון $EMERGENCY_SHAKES פעמים.",

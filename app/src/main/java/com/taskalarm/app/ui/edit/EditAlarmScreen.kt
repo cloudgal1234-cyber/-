@@ -82,6 +82,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.IntentCompat
+import androidx.compose.foundation.BorderStroke
+import android.os.Build
+import com.taskalarm.app.data.MathDifficulty
+import com.taskalarm.app.ui.task.TaskChallenge
+import com.taskalarm.app.ui.task.icon
 import com.taskalarm.app.alarm.AlarmSoundPlayer
 import com.taskalarm.app.alarm.SoundLibrary
 import com.taskalarm.app.data.Alarm
@@ -117,6 +122,12 @@ fun EditAlarmScreen(initial: Alarm, isNew: Boolean, onSave: (Alarm) -> Unit, onB
     var barcodeValue by rememberSaveable { mutableStateOf(initial.barcodeValue) }
     var barcodeFormat by rememberSaveable { mutableStateOf(initial.barcodeFormat) }
     var shakeCount by rememberSaveable { mutableFloatStateOf(initial.shakeCount.toFloat()) }
+    var stepCount by rememberSaveable { mutableFloatStateOf(initial.stepCount.toFloat()) }
+    var mathCount by rememberSaveable { mutableFloatStateOf(initial.mathCount.toFloat()) }
+    var mathDifficulty by rememberSaveable { mutableIntStateOf(initial.mathDifficulty) }
+    var memoryRounds by rememberSaveable { mutableFloatStateOf(initial.memoryRounds.toFloat()) }
+    var typingCount by rememberSaveable { mutableFloatStateOf(initial.typingCount.toFloat()) }
+    var showTry by remember { mutableStateOf(false) }
     var sound by rememberSaveable { mutableStateOf(initial.sound) }
     var volume by rememberSaveable { mutableFloatStateOf(initial.volumePercent.toFloat()) }
     var vibrate by rememberSaveable { mutableStateOf(initial.vibrate) }
@@ -127,7 +138,30 @@ fun EditAlarmScreen(initial: Alarm, isNew: Boolean, onSave: (Alarm) -> Unit, onB
         if (granted) showScanner = true else showCameraRationale = true
     }
 
-    val canSave = taskType == TaskType.SHAKE || !barcodeValue.isNullOrBlank()
+    // Optional: without it the step task falls back to the accelerometer.
+    val activityLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
+    val canSave = taskType != TaskType.BARCODE || !barcodeValue.isNullOrBlank()
+
+    fun draft() = initial.copy(
+        hour = timeState.hour,
+        minute = timeState.minute,
+        daysMask = daysMask,
+        label = label.trim(),
+        enabled = true,
+        taskType = taskType,
+        barcodeValue = barcodeValue,
+        barcodeFormat = barcodeFormat,
+        shakeCount = shakeCount.roundToInt(),
+        stepCount = stepCount.roundToInt(),
+        mathCount = mathCount.roundToInt(),
+        mathDifficulty = mathDifficulty,
+        memoryRounds = memoryRounds.roundToInt(),
+        typingCount = typingCount.roundToInt(),
+        sound = sound,
+        volumePercent = volume.roundToInt(),
+        vibrate = vibrate,
+    )
 
     Scaffold(
         topBar = {
@@ -141,24 +175,7 @@ fun EditAlarmScreen(initial: Alarm, isNew: Boolean, onSave: (Alarm) -> Unit, onB
         bottomBar = {
             Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp)) {
                 Button(
-                    onClick = {
-                        onSave(
-                            initial.copy(
-                                hour = timeState.hour,
-                                minute = timeState.minute,
-                                daysMask = daysMask,
-                                label = label.trim(),
-                                enabled = true,
-                                taskType = taskType,
-                                barcodeValue = barcodeValue,
-                                barcodeFormat = barcodeFormat,
-                                shakeCount = shakeCount.roundToInt(),
-                                sound = sound,
-                                volumePercent = volume.roundToInt(),
-                                vibrate = vibrate,
-                            )
-                        )
-                    },
+                    onClick = { onSave(draft()) },
                     enabled = canSave,
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(16.dp)
@@ -211,20 +228,12 @@ fun EditAlarmScreen(initial: Alarm, isNew: Boolean, onSave: (Alarm) -> Unit, onB
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    SegmentedButton(
-                        selected = taskType == TaskType.BARCODE,
-                        onClick = { taskType = TaskType.BARCODE },
-                        shape = SegmentedButtonDefaults.itemShape(0, 2),
-                        icon = { Icon(Icons.Filled.QrCode2, null) }
-                    ) { Text("סריקת ברקוד") }
-                    SegmentedButton(
-                        selected = taskType == TaskType.SHAKE,
-                        onClick = { taskType = TaskType.SHAKE },
-                        shape = SegmentedButtonDefaults.itemShape(1, 2),
-                        icon = { Icon(Icons.Filled.Vibration, null) }
-                    ) { Text("טלטול") }
-                }
+                TaskTypeGrid(selected = taskType, onSelect = { type ->
+                    taskType = type
+                    if (type == TaskType.STEPS && Build.VERSION.SDK_INT >= 29 && !PermissionUtils.hasActivityRecognition(context)) {
+                        activityLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
+                    }
+                })
                 if (taskType == TaskType.BARCODE) {
                     if (!barcodeValue.isNullOrBlank()) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -253,9 +262,56 @@ fun EditAlarmScreen(initial: Alarm, isNew: Boolean, onSave: (Alarm) -> Unit, onB
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                } else {
-                    Text("מספר ניעורים נדרש: ${shakeCount.roundToInt()}", fontWeight = FontWeight.Bold)
-                    Slider(value = shakeCount, onValueChange = { shakeCount = it }, valueRange = 10f..300f, steps = 28)
+                }
+                when (taskType) {
+                    TaskType.BARCODE -> Unit
+                    TaskType.SHAKE -> AmountSlider("מספר ניעורים נדרש", shakeCount, { shakeCount = it }, 10f..300f, 28)
+                    TaskType.STEPS -> {
+                        AmountSlider("מספר צעדים נדרש", stepCount, { stepCount = it }, 10f..500f, 48)
+                        Text(
+                            "הספירה משתמשת בחיישן הצעדים של המכשיר (הרשאת \"פעילות גופנית\"). " +
+                                "בלי ההרשאה נעשה שימוש בחיישן התאוצה. הנתונים לא נשמרים.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    TaskType.MATH -> {
+                        AmountSlider("מספר תרגילים", mathCount, { mathCount = it }, 1f..10f, 8)
+                        Text("רמת קושי", fontWeight = FontWeight.Bold)
+                        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                            MathDifficulty.names.forEachIndexed { i, name ->
+                                SegmentedButton(
+                                    selected = mathDifficulty == i + 1,
+                                    onClick = { mathDifficulty = i + 1 },
+                                    shape = SegmentedButtonDefaults.itemShape(i, MathDifficulty.names.size)
+                                ) { Text(name) }
+                            }
+                        }
+                        Text(
+                            when (mathDifficulty) {
+                                MathDifficulty.EASY -> "לדוגמה: 23 + 41"
+                                MathDifficulty.HARD -> "לדוגמה: 17 × 24 + 63"
+                                else -> "לדוגמה: 27 × 6 + 15"
+                            },
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    TaskType.MEMORY -> {
+                        AmountSlider("מספר סבבים", memoryRounds, { memoryRounds = it }, 1f..6f, 4)
+                        Text(
+                            "בכל סבב הרצף מתארך במשבצת אחת (מתחיל ב־3).",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    TaskType.TYPING -> AmountSlider("מספר משפטים", typingCount, { typingCount = it }, 1f..5f, 3)
+                }
+                if (taskType != TaskType.BARCODE || !barcodeValue.isNullOrBlank()) {
+                    OutlinedButton(onClick = { showTry = true }, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Filled.PlayArrow, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("נסה את המשימה עכשיו")
+                    }
                 }
             }
 
@@ -271,6 +327,9 @@ fun EditAlarmScreen(initial: Alarm, isNew: Boolean, onSave: (Alarm) -> Unit, onB
         }
     }
 
+    if (showTry) {
+        TryTaskDialog(alarm = draft(), onDismiss = { showTry = false })
+    }
     if (showScanner) {
         ScannerDialog(
             onDismiss = { showScanner = false },
@@ -438,6 +497,85 @@ private fun ScannerDialog(onDismiss: () -> Unit, onScanned: (String, String) -> 
                 colors = androidx.compose.material3.IconButtonDefaults.iconButtonColors(containerColor = Color.Black.copy(alpha = 0.6f))
             ) {
                 Icon(Icons.Filled.Close, "סגור", tint = Color.White, modifier = Modifier.size(32.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun AmountSlider(
+    title: String,
+    value: Float,
+    onChange: (Float) -> Unit,
+    range: ClosedFloatingPointRange<Float>,
+    steps: Int,
+) {
+    Text("$title: ${value.roundToInt()}", fontWeight = FontWeight.Bold)
+    Slider(value = value, onValueChange = onChange, valueRange = range, steps = steps)
+}
+
+/** Two-column grid of selectable task cards. */
+@Composable
+private fun TaskTypeGrid(selected: TaskType, onSelect: (TaskType) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        TaskType.entries.chunked(2).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { type ->
+                    val isSelected = type == selected
+                    Card(
+                        onClick = { onSelect(type) },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surfaceContainer
+                        ),
+                        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+                        modifier = Modifier.weight(1f).height(108.dp)
+                    ) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(
+                                type.icon(), null,
+                                tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(type.title, fontWeight = FontWeight.Bold)
+                            Text(
+                                type.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Lets the user rehearse the task before arming the alarm. */
+@Composable
+private fun TryTaskDialog(alarm: Alarm, onDismiss: () -> Unit) {
+    var success by remember { mutableStateOf(false) }
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        androidx.compose.material3.Surface(
+            shape = RoundedCornerShape(28.dp),
+            modifier = Modifier.fillMaxWidth(0.94f)
+        ) {
+            Column(
+                Modifier
+                    .verticalScroll(rememberScrollState())
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text("ניסיון: ${alarm.taskSummary}", style = MaterialTheme.typography.titleLarge)
+                if (success) {
+                    Icon(Icons.Filled.CheckCircle, null, tint = Success, modifier = Modifier.size(72.dp))
+                    Text("הצלחת! ככה תכבה את השעון בבוקר.", textAlign = TextAlign.Center)
+                } else {
+                    TaskChallenge(alarm = alarm, autoStartCamera = false, onSolved = { success = true })
+                }
+                TextButton(onClick = onDismiss) { Text(if (success) "סגור" else "ביטול") }
             }
         }
     }
