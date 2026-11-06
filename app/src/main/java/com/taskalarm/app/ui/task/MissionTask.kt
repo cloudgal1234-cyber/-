@@ -63,8 +63,8 @@ fun MissionTask(mission: Mission, onComplete: () -> Unit) {
     val scanned = remember(mission.id) { mutableSetOf<String>() }
     val done by rememberUpdatedState(onComplete)
     val total = mission.steps.size
-    val next = {
-        if (stepIndex + 1 >= total) done() else stepIndex++
+    val next: () -> Unit = {
+        if (stepIndex + 1 >= total) done() else stepIndex += 1
     }
 
     Column(
