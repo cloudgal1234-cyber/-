@@ -23,7 +23,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.taskalarm.app"
+        applicationId = "com.cloudgal1234.taskalarm"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
